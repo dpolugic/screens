@@ -159,13 +159,6 @@ const mapPointBetweenScreens = (point: Point, fromScreen: Screen, toScreen: Scre
   return resolveRelativePointPosition(relativePoint, toScreen)
 }
 
-const mapLineBetweenScreens = (line: Line, fromScreen: Screen, toScreen: Screen): Line => {
-  return {
-    startPoint: mapPointBetweenScreens(line.startPoint, fromScreen, toScreen),
-    endPoint: mapPointBetweenScreens(line.endPoint, fromScreen, toScreen),
-  }
-}
-
 const drawLine = (ctx: CanvasRenderingContext2D, line: Line, strokeStyle: string): void => {
   const { startPoint, endPoint } = line
 
