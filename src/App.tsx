@@ -293,6 +293,7 @@ function App() {
           for (let j = i + 1; j < allScreens.length; j++) {
             const screen2 = allScreens[j]
 
+            // todo: wrong!
             const overlap = getScreenOverlap(screen1, screen2)
 
             if (overlap.type === 'screen') {
