@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 import styled, { createGlobalStyle } from 'styled-components'
@@ -56,24 +56,27 @@ const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen): void => {
   ctx.lineTo(...topLeft)
 
   ctx.lineWidth = 2
-  ctx.strokeStyle = '#faf'
+  ctx.strokeStyle = 'red'
   ctx.stroke()
 }
 
 const INITIAL_SCREENS = [getScreenFromTwoPoints([100, 150], [200, 300])]
 
 function App() {
-  const [screens, setScreens] = useState<Screen[]>(INITIAL_SCREENS)
-  const [ctx, setCtx] = useState<CanvasRenderingContext2D | undefined>(undefined)
-
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const mousePositionRef = useRef<Point>([0, 0])
 
+  const [screens, setScreens] = useState<Screen[]>(INITIAL_SCREENS)
   const [draftScreenOrigin, setDraftScreenOrigin] = useState<Point | undefined>(undefined)
 
-  const canvasCallback = useCallback((el: HTMLCanvasElement) => {
-    const ctx = el.getContext('2d')
+  const ctx = useMemo(() => {
+    const el = canvasRef.current
 
-    if (!ctx) {
+    if (!el) return undefined
+
+    const context = el.getContext('2d')
+
+    if (!context) {
       throw new Error('2d context not supported')
     }
 
@@ -81,7 +84,7 @@ function App() {
     el.width = width
     el.height = height
 
-    setCtx(ctx)
+    return context
   }, [])
 
   useEffect(() => {
@@ -118,7 +121,7 @@ function App() {
     <React.Fragment>
       <BodyStyle />
       <StyledCanvas
-        ref={canvasCallback}
+        ref={canvasRef}
         onMouseDown={e => {
           const { clientX, clientY } = e
           // create draft screen based on current cursor position
