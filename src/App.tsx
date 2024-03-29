@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 
 import styled, { createGlobalStyle } from 'styled-components'
@@ -64,7 +64,11 @@ const INITIAL_SCREENS = [getScreenFromTwoPoints([100, 150], [200, 300])]
 
 function App() {
   const [screens, setScreens] = useState<Screen[]>(INITIAL_SCREENS)
-  const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null)
+  const [ctx, setCtx] = useState<CanvasRenderingContext2D | undefined>(undefined)
+
+  const mousePositionRef = useRef<Point>([0, 0])
+
+  const [draftScreenOrigin, setDraftScreenOrigin] = useState<Point | undefined>(undefined)
 
   const canvasCallback = useCallback((el: HTMLCanvasElement) => {
     const ctx = el.getContext('2d')
@@ -94,6 +98,12 @@ function App() {
         drawScreen(ctx, screen)
       }
 
+      if (draftScreenOrigin) {
+        const p0 = draftScreenOrigin
+        const p1 = mousePositionRef.current
+
+        drawScreen(ctx, getScreenFromTwoPoints(p0, p1))
+      }
       requestAnimationFrame(drawFrame)
     }
 
@@ -102,12 +112,31 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [ctx, screens])
+  }, [ctx, draftScreenOrigin, screens])
 
   return (
     <React.Fragment>
       <BodyStyle />
-      <StyledCanvas ref={canvasCallback}></StyledCanvas>
+      <StyledCanvas
+        ref={canvasCallback}
+        onMouseDown={e => {
+          const { clientX, clientY } = e
+          // create draft screen based on current cursor position
+          setDraftScreenOrigin([clientX, clientY])
+        }}
+        onMouseUp={e => {
+          if (!draftScreenOrigin) return
+
+          // convert draft screen to real screen
+          setScreens(prev => [...prev, getScreenFromTwoPoints(draftScreenOrigin, [e.clientX, e.clientY])])
+
+          // reset draft screen
+          setDraftScreenOrigin(undefined)
+        }}
+        onMouseMove={e => {
+          mousePositionRef.current = [e.clientX, e.clientY]
+        }}
+      ></StyledCanvas>
     </React.Fragment>
   )
 }
