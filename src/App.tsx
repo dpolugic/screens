@@ -93,8 +93,44 @@ const mapPointFromScreenSpace = ([x, y]: Point, [screenSizeX, screenSizeY]: Size
   return [x / screenSizeX, y / screenSizeY]
 }
 
-const getLinesInsideScreen = (screen1: Screen, lines: Line[]): Line[] => {
-  return lines.filter(it => lineIsInsideScreen(it, screen1))
+type ScreenOverlap =
+  | {
+      type: 'lines'
+      lines: Line[]
+    }
+  | {
+      type: 'screen'
+      screen: Screen
+    }
+  | {
+      type: 'partial'
+      screen: Screen
+      crop: Boundaries
+    }
+
+const getScreenOverlap = (screen: Screen, overlapping: Screen): ScreenOverlap => {
+  const isScreenInScreen =
+    pointIsInsideScreen(overlapping.topLeft, screen) &&
+    pointIsInsideScreen(overlapping.topRight, screen) &&
+    pointIsInsideScreen(overlapping.bottomRight, screen) &&
+    pointIsInsideScreen(overlapping.bottomLeft, screen)
+
+  if (isScreenInScreen) {
+    return {
+      type: 'screen',
+      screen: {
+        topLeft: mapPointBetweenScreens(overlapping.topLeft, screen, overlapping),
+        topRight: mapPointBetweenScreens(overlapping.topRight, screen, overlapping),
+        bottomRight: mapPointBetweenScreens(overlapping.bottomRight, screen, overlapping),
+        bottomLeft: mapPointBetweenScreens(overlapping.bottomLeft, screen, overlapping),
+      },
+    }
+  } else {
+    return {
+      type: 'lines',
+      lines: getScreenAsLines(overlapping).filter(it => lineIsInsideScreen(it, screen)),
+    }
+  }
 }
 
 const getRelativePointPosition = (point: Point, screen: Screen): Point => {
@@ -117,25 +153,26 @@ const resolveRelativePointPosition = (relativePoint: Point, screen: Screen): Poi
   return [resolvedX, resolvedY]
 }
 
-const mapLineBetweenScreens = (line: Line, fromScreen: Screen, toScreen: Screen): Line => {
-  const relativeLine = {
-    startPoint: getRelativePointPosition(line.startPoint, fromScreen),
-    endPoint: getRelativePointPosition(line.endPoint, fromScreen),
-  }
+const mapPointBetweenScreens = (point: Point, fromScreen: Screen, toScreen: Screen): Point => {
+  const relativePoint = getRelativePointPosition(point, fromScreen)
 
+  return resolveRelativePointPosition(relativePoint, toScreen)
+}
+
+const mapLineBetweenScreens = (line: Line, fromScreen: Screen, toScreen: Screen): Line => {
   return {
-    startPoint: resolveRelativePointPosition(relativeLine.startPoint, toScreen),
-    endPoint: resolveRelativePointPosition(relativeLine.endPoint, toScreen),
+    startPoint: mapPointBetweenScreens(line.startPoint, fromScreen, toScreen),
+    endPoint: mapPointBetweenScreens(line.endPoint, fromScreen, toScreen),
   }
 }
 
-const drawLine = (ctx: CanvasRenderingContext2D, line: Line): void => {
+const drawLine = (ctx: CanvasRenderingContext2D, line: Line, strokeStyle: string): void => {
   const { startPoint, endPoint } = line
 
   const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
 
   ctx.lineWidth = 2
-  ctx.strokeStyle = 'white'
+  ctx.strokeStyle = strokeStyle
 
   ctx.beginPath()
   ctx.moveTo(...mapPointToScreenSpace(startPoint, screenSize))
@@ -159,6 +196,28 @@ const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen): void => {
   ctx.lineTo(...mapPointToScreenSpace(topLeft, screenSize))
 
   ctx.stroke()
+}
+
+const getLinesFromOverlap = (overlap: ScreenOverlap): Line[] => {
+  switch (overlap.type) {
+    case 'lines':
+      return overlap.lines
+    case 'screen':
+      return getScreenAsLines(overlap.screen)
+    case 'partial':
+      throw new Error('not implemented')
+  }
+}
+
+const drawScreenOverlap = (
+  ctx: CanvasRenderingContext2D,
+  overlap: ScreenOverlap,
+  strokeStyle: string
+): void => {
+  const lines = getLinesFromOverlap(overlap)
+  for (const line of lines) {
+    drawLine(ctx, line, strokeStyle)
+  }
 }
 
 function App() {
@@ -221,27 +280,42 @@ function App() {
         drawScreen(ctx, screen)
       }
 
-      if (draftScreenOrigin) {
-        const p0 = draftScreenOrigin
-        const p1 = mousePositionRef.current
+      const draftScreen =
+        draftScreenOrigin !== undefined
+          ? getScreenFromTwoPoints(draftScreenOrigin, mousePositionRef.current)
+          : undefined
 
-        const draftScreen = getScreenFromTwoPoints(p0, p1)
-
+      if (draftScreen) {
         drawScreen(ctx, draftScreen)
+      }
 
-        const screen1 = screens[0]
+      const screensWithDraft = draftScreen !== undefined ? screens.concat(draftScreen) : screens
+      const generatedScreens: Screen[] = []
 
-        if (screen1 !== undefined && draftScreen !== undefined) {
-          const linesOfScreen2 = getScreenAsLines(draftScreen)
-          const linesInScreen1 = getLinesInsideScreen(screen1, linesOfScreen2)
-          for (const line of linesInScreen1) {
-            drawLine(ctx, line)
-            // Draw screen2-lines in screen1 into screen2 again
+      for (let k = 0; k < 3; k++) {
+        const color = ['#f00a', '#0f0a', '#00fa', '#fafa'][k]
+        const allScreens = [...screensWithDraft, ...generatedScreens]
+        for (let i = 0; i < allScreens.length; i++) {
+          const screen1 = allScreens[i]
+          for (let j = i + 1; j < allScreens.length; j++) {
+            const screen2 = allScreens[j]
 
-            drawLine(ctx, mapLineBetweenScreens(line, screen1, draftScreen))
+            const overlap = getScreenOverlap(screen1, screen2)
+
+            if (overlap.type === 'screen') {
+              const asdf = JSON.stringify(overlap.screen)
+
+              // make sure screen isn't already in list
+              if (!generatedScreens.some(x => JSON.stringify(x) === asdf)) {
+                generatedScreens.push(overlap.screen)
+              }
+            }
+
+            drawScreenOverlap(ctx, overlap, color)
           }
         }
       }
+
       requestAnimationFrame(drawFrame)
     }
 
