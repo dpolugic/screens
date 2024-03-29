@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 import styled, { createGlobalStyle } from 'styled-components'
@@ -24,6 +24,8 @@ const BodyStyle = createGlobalStyle`
 
 type Point = [number, number]
 
+type Size = [number, number]
+
 type Screen = {
   topLeft: Point
   topRight: Point
@@ -45,28 +47,36 @@ const getScreenFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Screen => {
   }
 }
 
+const mapPointToScreenSpace = ([x, y]: Point, [screenSizeX, screenSizeY]: Size): Point => {
+  return [x * screenSizeX, y * screenSizeY]
+}
+
+const mapPointFromScreenSpace = ([x, y]: Point, [screenSizeX, screenSizeY]: Size): Point => {
+  return [x / screenSizeX, y / screenSizeY]
+}
+
 const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen): void => {
   const { topLeft, topRight, bottomLeft, bottomRight } = screen
 
+  const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
+
   ctx.beginPath()
-  ctx.moveTo(...topLeft)
-  ctx.lineTo(...topRight)
-  ctx.lineTo(...bottomRight)
-  ctx.lineTo(...bottomLeft)
-  ctx.lineTo(...topLeft)
+  ctx.moveTo(...mapPointToScreenSpace(topLeft, screenSize))
+  ctx.lineTo(...mapPointToScreenSpace(topRight, screenSize))
+  ctx.lineTo(...mapPointToScreenSpace(bottomRight, screenSize))
+  ctx.lineTo(...mapPointToScreenSpace(bottomLeft, screenSize))
+  ctx.lineTo(...mapPointToScreenSpace(topLeft, screenSize))
 
   ctx.lineWidth = 2
-  ctx.strokeStyle = 'red'
+  ctx.strokeStyle = '#faf'
   ctx.stroke()
 }
-
-const INITIAL_SCREENS = [getScreenFromTwoPoints([100, 150], [200, 300])]
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mousePositionRef = useRef<Point>([0, 0])
 
-  const [screens, setScreens] = useState<Screen[]>(INITIAL_SCREENS)
+  const [screens, setScreens] = useState<Screen[]>([])
   const [draftScreenOrigin, setDraftScreenOrigin] = useState<Point | undefined>(undefined)
 
   const ctx = useMemo(() => {
@@ -85,6 +95,27 @@ function App() {
     el.height = height
 
     return context
+  }, [])
+
+  const getMousePoint = useCallback(
+    (mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
+      const screenSize: Size = [ctx?.canvas.width ?? 1, ctx?.canvas.height ?? 1]
+      return mapPointFromScreenSpace([mouseEvent.clientX, mouseEvent.clientY], screenSize)
+    },
+    [ctx]
+  )
+
+  useEffect(() => {
+    const handleKeyDown = (keydownEvent: KeyboardEvent) => {
+      if (keydownEvent.key === 'Escape') {
+        setScreens([])
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   useEffect(() => {
@@ -123,21 +154,23 @@ function App() {
       <StyledCanvas
         ref={canvasRef}
         onMouseDown={e => {
-          const { clientX, clientY } = e
+          const mousePoint = getMousePoint(e)
           // create draft screen based on current cursor position
-          setDraftScreenOrigin([clientX, clientY])
+          setDraftScreenOrigin(mousePoint)
         }}
         onMouseUp={e => {
           if (!draftScreenOrigin) return
 
+          const mousePoint = getMousePoint(e)
+
           // convert draft screen to real screen
-          setScreens(prev => [...prev, getScreenFromTwoPoints(draftScreenOrigin, [e.clientX, e.clientY])])
+          setScreens(prev => [...prev, getScreenFromTwoPoints(draftScreenOrigin, mousePoint)])
 
           // reset draft screen
           setDraftScreenOrigin(undefined)
         }}
         onMouseMove={e => {
-          mousePositionRef.current = [e.clientX, e.clientY]
+          mousePositionRef.current = getMousePoint(e)
         }}
       ></StyledCanvas>
     </React.Fragment>
