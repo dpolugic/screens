@@ -49,10 +49,22 @@ const getScreenFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Screen => {
   }
 }
 
-const pointIsInsideScreen = (point: Point, screen: Screen): boolean => {
+type Boundaries = {
+  xMin: number
+  xMax: number
+  yMin: number
+  yMax: number
+}
+const getScreenBoundaries = (screen: Screen): Boundaries => {
   const { topLeft, bottomRight } = screen
   const [xMin, yMin] = topLeft
   const [xMax, yMax] = bottomRight
+
+  return { xMin, xMax, yMin, yMax }
+}
+
+const pointIsInsideScreen = (point: Point, screen: Screen): boolean => {
+  const { xMin, xMax, yMin, yMax } = getScreenBoundaries(screen)
   const [pointX, pointY] = point
 
   return xMin <= pointX && pointX <= xMax && yMin <= pointY && pointY <= yMax
@@ -69,6 +81,7 @@ const getScreenAsLines = (screen: Screen): [Line, Line, Line, Line] => {
 }
 
 const lineIsInsideScreen = (line: Line, screen: Screen): boolean => {
+  // Note: This only checks if the entire line is in the screen
   return pointIsInsideScreen(line.startPoint, screen) && pointIsInsideScreen(line.endPoint, screen)
 }
 
@@ -82,6 +95,38 @@ const mapPointFromScreenSpace = ([x, y]: Point, [screenSizeX, screenSizeY]: Size
 
 const getLinesInsideScreen = (screen1: Screen, lines: Line[]): Line[] => {
   return lines.filter(it => lineIsInsideScreen(it, screen1))
+}
+
+const getRelativePointPosition = (point: Point, screen: Screen): Point => {
+  const { xMin, xMax, yMin, yMax } = getScreenBoundaries(screen)
+  const [x, y] = point
+
+  const relativeX = (x - xMin) / (xMax - xMin)
+  const relativeY = (y - yMin) / (yMax - yMin)
+
+  return [relativeX, relativeY]
+}
+
+const resolveRelativePointPosition = (relativePoint: Point, screen: Screen): Point => {
+  const { xMin, xMax, yMin, yMax } = getScreenBoundaries(screen)
+  const [x, y] = relativePoint
+
+  const resolvedX = xMin + x * (xMax - xMin)
+  const resolvedY = yMin + y * (yMax - yMin)
+
+  return [resolvedX, resolvedY]
+}
+
+const mapLineBetweenScreens = (line: Line, fromScreen: Screen, toScreen: Screen): Line => {
+  const relativeLine = {
+    startPoint: getRelativePointPosition(line.startPoint, fromScreen),
+    endPoint: getRelativePointPosition(line.endPoint, fromScreen),
+  }
+
+  return {
+    startPoint: resolveRelativePointPosition(relativeLine.startPoint, toScreen),
+    endPoint: resolveRelativePointPosition(relativeLine.endPoint, toScreen),
+  }
 }
 
 const drawLine = (ctx: CanvasRenderingContext2D, line: Line): void => {
@@ -184,17 +229,16 @@ function App() {
 
         drawScreen(ctx, draftScreen)
 
-        const [screen1] = screens
+        const screen1 = screens[0]
 
         if (screen1 !== undefined && draftScreen !== undefined) {
-          console.log({ screen1, draftScreen, screensLength: screens.length })
           const linesOfScreen2 = getScreenAsLines(draftScreen)
-          const linesInScreen = getLinesInsideScreen(screen1, linesOfScreen2)
-          if (linesInScreen.length > 0) {
-            console.log({ linesInScreen })
-            for (const line of linesInScreen) {
-              drawLine(ctx, line)
-            }
+          const linesInScreen1 = getLinesInsideScreen(screen1, linesOfScreen2)
+          for (const line of linesInScreen1) {
+            drawLine(ctx, line)
+            // Draw screen2-lines in screen1 into screen2 again
+
+            drawLine(ctx, mapLineBetweenScreens(line, screen1, draftScreen))
           }
         }
       }
