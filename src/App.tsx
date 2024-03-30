@@ -201,29 +201,27 @@ const drawScreenOverlap = (
 }
 
 function App() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
   const mousePositionRef = useRef<Point>([0, 0])
 
   const [screens, setScreens] = useState<Screen[]>([])
   const [draftScreenOrigin, setDraftScreenOrigin] = useState<Point | undefined>(undefined)
 
   const ctx = useMemo(() => {
-    const el = canvasRef.current
+    if (!canvasEl) return undefined
 
-    if (!el) return undefined
-
-    const context = el.getContext('2d')
+    const context = canvasEl.getContext('2d')
 
     if (!context) {
       throw new Error('2d context not supported')
     }
 
-    const { width, height } = el.getBoundingClientRect()
-    el.width = width
-    el.height = height
+    const { width, height } = canvasEl.getBoundingClientRect()
+    canvasEl.width = width
+    canvasEl.height = height
 
     return context
-  }, [])
+  }, [canvasEl])
 
   const getMousePoint = useCallback(
     (mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
@@ -309,7 +307,7 @@ function App() {
 
   return (
     <StyledCanvas
-      ref={canvasRef}
+      ref={setCanvasEl}
       onMouseDown={e => {
         const mousePoint = getMousePoint(e)
         // create draft screen based on current cursor position
