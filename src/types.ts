@@ -13,10 +13,13 @@ export type Screen = {
   bottomRight: Point
 }
 
-// this is what we'll render inside every screen instance, starting with top-level screens.
-export type Pattern = {
+export type BasePattern = {
   anchor: Point // relative point representing base of new screen.
   target: Point // relative point representing other corner of new screen. can have negative coordinates.
+}
+
+// this is what we'll render inside every screen instance, starting with top-level screens.
+export type Pattern = BasePattern & {
   subpatterns: Pattern[]
 }
 

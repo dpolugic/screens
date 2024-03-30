@@ -3,10 +3,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { drawFrame } from './draw'
 import {
+  findClickedScreenOrPattern,
+  getBoundariesFromTwoPoints,
   getMousePoint,
   getRelativePointPosition,
+  getScreenBoundaries,
   getScreenFromTwoPoints,
-  pointIsInsideScreen,
 } from './functions'
 import { Pattern, Point, Screen } from './types'
 
@@ -118,17 +120,61 @@ function App() {
         if (Math.abs(x2 - x1) < 0.01) return
         if (Math.abs(y2 - y1) < 0.01) return
 
-        const clickedScreen = screens.find(screen => pointIsInsideScreen(draftScreenOrigin, screen))
+        const res = findClickedScreenOrPattern(screens, patterns, draftScreenOrigin)
 
+        console.log(res)
         // if draft origin is inside existing screen, add a pattern instead
-        if (clickedScreen !== undefined) {
-          const newPattern: Pattern = {
-            anchor: getRelativePointPosition(draftScreenOrigin, clickedScreen),
-            target: getRelativePointPosition(mousePoint, clickedScreen),
-            subpatterns: [],
-          }
+        if (res !== undefined) {
+          setPatterns(prev => {
+            const [screenIndex, outerPatternIndex, ...patternPath] = res
 
-          setPatterns(prev => [...prev, newPattern])
+            if (screenIndex === undefined) {
+              throw new Error('path cannot be zero length')
+            }
+
+            const outerScreenBoundaries = getScreenBoundaries(screens[screenIndex])
+
+            let anchor = getRelativePointPosition(draftScreenOrigin, outerScreenBoundaries)
+            let target = getRelativePointPosition(mousePoint, outerScreenBoundaries)
+
+            // This needs to be a special case because the model isn't so good
+            if (outerPatternIndex === undefined) {
+              return [
+                ...prev,
+                {
+                  anchor,
+                  target,
+                  subpatterns: [],
+                },
+              ]
+            }
+
+            // hacky deep clone
+            const newPatterns = JSON.parse(JSON.stringify(prev))
+
+            let pattern = newPatterns[outerPatternIndex]
+
+            // ...
+            const initialBoundaries = getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
+            anchor = getRelativePointPosition(anchor, initialBoundaries)
+            target = getRelativePointPosition(target, initialBoundaries)
+
+            for (const k of patternPath) {
+              pattern = newPatterns[k]
+
+              const boundaries = getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
+              anchor = getRelativePointPosition(anchor, boundaries)
+              target = getRelativePointPosition(target, boundaries)
+            }
+
+            pattern.subpatterns.push({
+              anchor,
+              target,
+              subpatterns: [],
+            })
+
+            return newPatterns
+          })
         } else {
           // else, create top-level screen
           const newScreen = getScreenFromTwoPoints(draftScreenOrigin, mousePoint)

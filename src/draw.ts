@@ -24,11 +24,13 @@ const COLORS = '0123456789abcdef'
   .split('')
   .reverse()
   .map(a => `#faf${a}`)
-const MAX_DEPTH = 10
+
+const MAX_DEPTH = 6
 
 const drawPattern = (
   ctx: CanvasRenderingContext2D,
   screen: Screen,
+  originalPatterns: Pattern[],
   pattern: Pattern,
   depth: number = 0
 ): void => {
@@ -39,7 +41,11 @@ const drawPattern = (
   drawScreen(ctx, virtualScreen, COLORS[depth])
 
   for (const subpattern of pattern.subpatterns) {
-    drawPattern(ctx, virtualScreen, subpattern, depth + 1)
+    drawPattern(ctx, virtualScreen, originalPatterns, subpattern, depth + 1)
+  }
+
+  for (const originalPattern of originalPatterns) {
+    drawPattern(ctx, virtualScreen, originalPatterns, originalPattern, depth + 1)
   }
 }
 
@@ -64,7 +70,7 @@ export const drawFrame = (
   // Draw virtual screens
   for (const screen of screensWithDraft) {
     for (const pattern of patterns) {
-      drawPattern(ctx, screen, pattern)
+      drawPattern(ctx, screen, patterns, pattern)
     }
   }
 }
