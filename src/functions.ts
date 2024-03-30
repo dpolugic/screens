@@ -1,4 +1,4 @@
-import { Boundaries, Line, Pattern, Point, Screen, ScreenOverlap, Size } from './types'
+import { Boundaries, Pattern, Point, Screen, Size } from './types'
 
 export const getScreenFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Screen => {
   const xMin = Math.min(x1, x2)
@@ -29,52 +29,12 @@ export const pointIsInsideScreen = (point: Point, screen: Screen): boolean => {
   return xMin <= pointX && pointX <= xMax && yMin <= pointY && pointY <= yMax
 }
 
-export const getScreenAsLines = (screen: Screen): [Line, Line, Line, Line] => {
-  const { topLeft, topRight, bottomLeft, bottomRight } = screen
-  return [
-    [topLeft, topRight],
-    [topRight, bottomRight],
-    [bottomRight, bottomLeft],
-    [bottomLeft, topLeft],
-  ]
-}
-
-export const lineIsInsideScreen = (line: Line, screen: Screen): boolean => {
-  // Note: This only checks if the entire line is in the screen
-  return pointIsInsideScreen(line[0], screen) && pointIsInsideScreen(line[1], screen)
-}
-
 export const mapPointToViewportSpace = ([x, y]: Point, [viewportWidth, viewportHeight]: Size): Point => {
   return [x * viewportWidth, y * viewportHeight]
 }
 
 export const mapPointFromViewportSpace = ([x, y]: Point, [viewportWidth, viewportHeight]: Size): Point => {
   return [x / viewportWidth, y / viewportHeight]
-}
-
-export const getScreenOverlap = (screen: Screen, overlapping: Screen): ScreenOverlap => {
-  const isScreenInScreen =
-    pointIsInsideScreen(overlapping.topLeft, screen) &&
-    pointIsInsideScreen(overlapping.topRight, screen) &&
-    pointIsInsideScreen(overlapping.bottomRight, screen) &&
-    pointIsInsideScreen(overlapping.bottomLeft, screen)
-
-  if (isScreenInScreen) {
-    return {
-      type: 'screen',
-      screen: {
-        topLeft: mapPointBetweenScreens(overlapping.topLeft, screen, overlapping),
-        topRight: mapPointBetweenScreens(overlapping.topRight, screen, overlapping),
-        bottomRight: mapPointBetweenScreens(overlapping.bottomRight, screen, overlapping),
-        bottomLeft: mapPointBetweenScreens(overlapping.bottomLeft, screen, overlapping),
-      },
-    }
-  } else {
-    return {
-      type: 'lines',
-      lines: getScreenAsLines(overlapping).filter(it => lineIsInsideScreen(it, screen)),
-    }
-  }
 }
 
 export const getRelativePointPosition = (point: Point, screen: Screen): Point => {
