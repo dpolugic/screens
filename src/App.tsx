@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 
 import styled from 'styled-components'
+import { Boundaries, Line, Point, Screen, ScreenOverlap, Size } from './types'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
@@ -8,41 +9,6 @@ const StyledCanvas = styled.canvas`
   width: 100%;
   height: 100%;
 `
-
-type Point = [x: number, y: number]
-
-type Line = [startPoint: Point, endPoint: Point]
-
-type Size = [width: number, height: number]
-
-type Screen = {
-  topLeft: Point
-  topRight: Point
-  bottomLeft: Point
-  bottomRight: Point
-}
-
-type Boundaries = {
-  xMin: number
-  xMax: number
-  yMin: number
-  yMax: number
-}
-
-type ScreenOverlap =
-  | {
-      type: 'lines'
-      lines: Line[]
-    }
-  | {
-      type: 'screen'
-      screen: Screen
-    }
-  | {
-      type: 'partial'
-      screen: Screen
-      crop: Boundaries
-    }
 
 const getScreenFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Screen => {
   const xMin = Math.min(x1, x2)
