@@ -1,5 +1,10 @@
-import { getScreenAsLines, getScreenOverlap, mapPointToViewportSpace } from './functions'
-import { Line, Screen, ScreenOverlap, Size } from './types'
+import {
+  applyPatternToScreen,
+  getScreenAsLines,
+  getScreenOverlap,
+  mapPointToViewportSpace,
+} from './functions'
+import { Line, Pattern, Screen, ScreenOverlap, Size } from './types'
 
 const drawLine = (ctx: CanvasRenderingContext2D, line: Line, strokeStyle: string): void => {
   const [startPoint, endPoint] = line
@@ -15,13 +20,13 @@ const drawLine = (ctx: CanvasRenderingContext2D, line: Line, strokeStyle: string
   ctx.stroke()
 }
 
-const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen): void => {
+const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen, strokeStyle: string): void => {
   const { topLeft, topRight, bottomLeft, bottomRight } = screen
 
   const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
 
   ctx.lineWidth = 1
-  ctx.strokeStyle = '#faf'
+  ctx.strokeStyle = strokeStyle
 
   ctx.beginPath()
   ctx.moveTo(...mapPointToViewportSpace(topLeft, screenSize))
@@ -55,23 +60,55 @@ const drawScreenOverlap = (
   }
 }
 
+// ...
+const COLORS = '0123456789abcdef'
+  .split('')
+  .reverse()
+  .map(a => `#faf${a}`)
+const MAX_DEPTH = 10
+
+const drawPattern = (
+  ctx: CanvasRenderingContext2D,
+  screen: Screen,
+  pattern: Pattern,
+  depth: number = 0
+): void => {
+  if (depth > MAX_DEPTH) return
+
+  const virtualScreen = applyPatternToScreen(screen, pattern)
+
+  drawScreen(ctx, virtualScreen, COLORS[depth])
+
+  for (const subpattern of pattern.subpatterns) {
+    drawPattern(ctx, virtualScreen, subpattern, depth + 1)
+  }
+}
+
 export const drawFrame = (
   ctx: CanvasRenderingContext2D,
   screens: Screen[],
-  draftScreen: Screen | undefined
+  draftScreen: Screen | undefined,
+  patterns: Pattern[]
 ): void => {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
   for (const screen of screens) {
-    drawScreen(ctx, screen)
+    drawScreen(ctx, screen, '#fff')
   }
 
   if (draftScreen) {
-    drawScreen(ctx, draftScreen)
+    drawScreen(ctx, draftScreen, '#aaa')
   }
 
   const screensWithDraft = draftScreen !== undefined ? screens.concat(draftScreen) : screens
   const generatedScreens: Screen[] = []
+
+  // Draw virtual screens
+  for (const screen of screensWithDraft) {
+    for (const pattern of patterns) {
+      drawPattern(ctx, screen, pattern)
+    }
+  }
 
   for (let k = 0; k < 3; k++) {
     const color = ['#f00a', '#0f0a', '#00fa', '#fafa'][k]

@@ -4,11 +4,20 @@ export type Line = [startPoint: Point, endPoint: Point]
 
 export type Size = [width: number, height: number]
 
+// this is a top-level screen. it has a location and size. patterns will be rendered
+// recursively inside it.
 export type Screen = {
   topLeft: Point
   topRight: Point
   bottomLeft: Point
   bottomRight: Point
+}
+
+// this is what we'll render inside every screen instance, starting with top-level screens.
+export type Pattern = {
+  anchor: Point // relative point representing base of new screen.
+  target: Point // relative point representing other corner of new screen. can have negative coordinates.
+  subpatterns: Pattern[]
 }
 
 export type Boundaries = {

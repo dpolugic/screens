@@ -2,8 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import styled from 'styled-components'
 import { drawFrame } from './draw'
-import { getMousePoint, getScreenBoundaries, getScreenFromTwoPoints } from './functions'
-import { Point, Screen } from './types'
+import {
+  getMousePoint,
+  getRelativePointPosition,
+  getScreenFromTwoPoints,
+  pointIsInsideScreen,
+} from './functions'
+import { Pattern, Point, Screen } from './types'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
@@ -16,6 +21,7 @@ function App() {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
   const mousePositionRef = useRef<Point>([0, 0])
 
+  const [patterns, setPatterns] = useState<Pattern[]>([])
   const [screens, setScreens] = useState<Screen[]>([])
   const [draftScreenOrigin, setDraftScreenOrigin] = useState<Point | undefined>(undefined)
 
@@ -64,12 +70,14 @@ function App() {
     const render = (): void => {
       if (cancelled) return
 
+      // todo: is this a top-level screen, or are we creating a new pattern?
+      //  for now we'll always handle drafts as a top-level screen until submitted.
       const draftScreen =
         draftScreenOrigin !== undefined
           ? getScreenFromTwoPoints(draftScreenOrigin, mousePositionRef.current)
           : undefined
 
-      drawFrame(ctx, screens, draftScreen)
+      drawFrame(ctx, screens, draftScreen, patterns)
 
       requestAnimationFrame(render)
     }
@@ -79,7 +87,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [ctx, draftScreenOrigin, screens])
+  }, [ctx, draftScreenOrigin, screens, patterns])
 
   return (
     <StyledCanvas
@@ -88,6 +96,7 @@ function App() {
         if (!ctx) return
 
         const mousePoint = getMousePoint(ctx, e)
+
         // create draft screen based on current cursor position
         setDraftScreenOrigin(mousePoint)
       }}
@@ -95,20 +104,35 @@ function App() {
         if (!ctx) return
         if (!draftScreenOrigin) return
 
-        // reset draft screen
+        // reset origin. note: this is async so we can still use the value below.
         setDraftScreenOrigin(undefined)
 
         const mousePoint = getMousePoint(ctx, e)
 
-        // convert draft screen to real screen
-        const newScreen = getScreenFromTwoPoints(draftScreenOrigin, mousePoint)
+        const [x1, y1] = draftScreenOrigin
+        const [x2, y2] = mousePoint
 
-        // validate size, ignore screens that are too small (arbitrary)
-        // todo: convert to viewport size and checks pixels
-        const { xMin, yMin, xMax, yMax } = getScreenBoundaries(newScreen)
-        if (xMax - xMin < 0.01 || yMax - yMin < 0.01) return
+        // validate size, ignore drawings that are too small (arbitrary)
+        // todo: convert to viewport size and check pixels
+        if (Math.abs(x2 - x1) < 0.01) return
+        if (Math.abs(y2 - y1) < 0.01) return
 
-        setScreens(prev => [...prev, newScreen])
+        const clickedScreen = screens.find(screen => pointIsInsideScreen(draftScreenOrigin, screen))
+
+        // if draft origin is inside existing screen, add a pattern instead
+        if (clickedScreen !== undefined) {
+          const newPattern: Pattern = {
+            anchor: getRelativePointPosition(draftScreenOrigin, clickedScreen),
+            target: getRelativePointPosition(mousePoint, clickedScreen),
+            subpatterns: [],
+          }
+
+          setPatterns(prev => [...prev, newPattern])
+        } else {
+          // else, create top-level screen
+          const newScreen = getScreenFromTwoPoints(draftScreenOrigin, mousePoint)
+          setScreens(prev => [...prev, newScreen])
+        }
       }}
       onMouseMove={e => {
         if (!ctx) return

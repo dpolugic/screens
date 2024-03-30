@@ -1,4 +1,4 @@
-import { Boundaries, Line, Point, Screen, ScreenOverlap, Size } from './types'
+import { Boundaries, Line, Pattern, Point, Screen, ScreenOverlap, Size } from './types'
 
 export const getScreenFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Screen => {
   const xMin = Math.min(x1, x2)
@@ -103,10 +103,25 @@ export const mapPointBetweenScreens = (point: Point, fromScreen: Screen, toScree
   return resolveRelativePointPosition(relativePoint, toScreen)
 }
 
+const mapRelativeScreenToOtherScreen = (targetScreen: Screen, relativeScreen: Screen): Screen => {
+  return {
+    topLeft: resolveRelativePointPosition(relativeScreen.topLeft, targetScreen),
+    topRight: resolveRelativePointPosition(relativeScreen.topRight, targetScreen),
+    bottomRight: resolveRelativePointPosition(relativeScreen.bottomRight, targetScreen),
+    bottomLeft: resolveRelativePointPosition(relativeScreen.bottomLeft, targetScreen),
+  }
+}
+
 export const getMousePoint = (
   ctx: CanvasRenderingContext2D,
   mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>
 ) => {
   const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
   return mapPointFromViewportSpace([mouseEvent.clientX, mouseEvent.clientY], screenSize)
+}
+
+export const applyPatternToScreen = (screen: Screen, pattern: Pattern): Screen => {
+  const relativePatternScreen = getScreenFromTwoPoints(pattern.anchor, pattern.target)
+
+  return mapRelativeScreenToOtherScreen(screen, relativePatternScreen)
 }
