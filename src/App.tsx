@@ -19,22 +19,28 @@ function App() {
   const [screens, setScreens] = useState<Screen[]>([])
   const [draftScreenOrigin, setDraftScreenOrigin] = useState<Point | undefined>(undefined)
 
-  const ctx = useMemo(() => {
-    if (!canvasEl) return undefined
+  const ctx = useMemo(() => canvasEl?.getContext('2d'), [canvasEl])
 
-    const context = canvasEl.getContext('2d')
+  // Handle viewport size changes
+  useEffect(() => {
+    if (!canvasEl) return
 
-    if (!context) {
-      throw new Error('2d context not supported')
+    const handleResize = (): void => {
+      const { width, height } = canvasEl.getBoundingClientRect()
+      canvasEl.width = width
+      canvasEl.height = height
     }
 
-    const { width, height } = canvasEl.getBoundingClientRect()
-    canvasEl.width = width
-    canvasEl.height = height
+    handleResize()
 
-    return context
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
   }, [canvasEl])
 
+  // Handle keyboard commands
   useEffect(() => {
     const handleKeyDown = (keydownEvent: KeyboardEvent) => {
       if (keydownEvent.key === 'Escape') {
@@ -49,6 +55,7 @@ function App() {
     }
   }, [])
 
+  // Render
   useEffect(() => {
     if (!ctx) return
 
