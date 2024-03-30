@@ -39,7 +39,7 @@ const COLORS = '0123456789abcdef'
   .map(a => `#fa${a}`)
 
 const MIN_DEPTH = 3
-const MAX_DEPTH = 15
+const MAX_DEPTH = 20
 const MAX_DRAW_CALLS = 1e4
 
 const shouldCancel = (depth: number | undefined): boolean => {
@@ -103,12 +103,7 @@ function* drawPattern(
   yield* runInParallel(generators, () => shouldCancel(undefined))
 }
 
-export const drawFrame = (
-  ctx: CanvasRenderingContext2D,
-  screens: Screen[],
-  draftScreen: Screen | undefined,
-  patterns: Pattern[]
-): void => {
+export const drawFrame = (ctx: CanvasRenderingContext2D, screens: Screen[], patterns: Pattern[]): void => {
   drawCalls = 0
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
@@ -116,19 +111,15 @@ export const drawFrame = (
     drawScreen(ctx, screen, COLORS[0])
   }
 
-  const screensWithDraft = draftScreen !== undefined ? screens.concat(draftScreen) : screens
+  //   const screensWithDraft = draftScreen !== undefined ? screens.concat(draftScreen) : screens
 
   // Draw virtual screens
   const generators = []
-  for (const screen of screensWithDraft) {
+  for (const screen of screens) {
     for (const pattern of patterns) {
       generators.push(drawPattern(ctx, screen, patterns, pattern))
     }
   }
 
   runUntilDone(runInParallel(generators, () => shouldCancel(MIN_DEPTH)))
-
-  if (draftScreen) {
-    drawScreen(ctx, draftScreen, '#aaa')
-  }
 }
