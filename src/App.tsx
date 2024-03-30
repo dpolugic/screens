@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 import styled from 'styled-components'
@@ -200,6 +200,14 @@ const drawScreenOverlap = (
   }
 }
 
+const getMousePoint = (
+  ctx: CanvasRenderingContext2D,
+  mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>
+) => {
+  const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
+  return mapPointFromScreenSpace([mouseEvent.clientX, mouseEvent.clientY], screenSize)
+}
+
 function App() {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
   const mousePositionRef = useRef<Point>([0, 0])
@@ -222,14 +230,6 @@ function App() {
 
     return context
   }, [canvasEl])
-
-  const getMousePoint = useCallback(
-    (mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
-      const screenSize: Size = [ctx?.canvas.width ?? 1, ctx?.canvas.height ?? 1]
-      return mapPointFromScreenSpace([mouseEvent.clientX, mouseEvent.clientY], screenSize)
-    },
-    [ctx]
-  )
 
   useEffect(() => {
     const handleKeyDown = (keydownEvent: KeyboardEvent) => {
@@ -309,29 +309,35 @@ function App() {
     <StyledCanvas
       ref={setCanvasEl}
       onMouseDown={e => {
-        const mousePoint = getMousePoint(e)
+        if (!ctx) return
+
+        const mousePoint = getMousePoint(ctx, e)
         // create draft screen based on current cursor position
         setDraftScreenOrigin(mousePoint)
       }}
       onMouseUp={e => {
+        if (!ctx) return
         if (!draftScreenOrigin) return
 
-        const mousePoint = getMousePoint(e)
+        // reset draft screen
+        setDraftScreenOrigin(undefined)
+
+        const mousePoint = getMousePoint(ctx, e)
 
         // convert draft screen to real screen
-
         const newScreen = getScreenFromTwoPoints(draftScreenOrigin, mousePoint)
-        const { topLeft, bottomRight } = newScreen
-        const [xMin, yMin] = topLeft
-        const [xMax, yMax] = bottomRight
-        setDraftScreenOrigin(undefined)
-        if (xMax - xMin < 0.01 || yMax - yMin < 0.01) return
-        setScreens(prev => [...prev, newScreen])
 
-        // reset draft screen
+        // validate size, ignore screens that are too small (arbitrary)
+        // todo: convert to viewport size and checks pixels
+        const { xMin, yMin, xMax, yMax } = getScreenBoundaries(newScreen)
+        if (xMax - xMin < 0.01 || yMax - yMin < 0.01) return
+
+        setScreens(prev => [...prev, newScreen])
       }}
       onMouseMove={e => {
-        mousePositionRef.current = getMousePoint(e)
+        if (!ctx) return
+
+        mousePositionRef.current = getMousePoint(ctx, e)
       }}
     />
   )
