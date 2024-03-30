@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import styled from 'styled-components'
-import { Boundaries, Line, Point, Screen, ScreenOverlap, Size } from './types'
+import { drawFrame } from './draw'
+import { getMousePoint, getScreenBoundaries, getScreenFromTwoPoints } from './functions'
+import { Point, Screen } from './types'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
@@ -9,171 +11,6 @@ const StyledCanvas = styled.canvas`
   width: 100%;
   height: 100%;
 `
-
-const getScreenFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Screen => {
-  const xMin = Math.min(x1, x2)
-  const xMax = Math.max(x1, x2)
-  const yMin = Math.min(y1, y2)
-  const yMax = Math.max(y1, y2)
-
-  return {
-    topLeft: [xMin, yMin],
-    topRight: [xMax, yMin],
-    bottomLeft: [xMin, yMax],
-    bottomRight: [xMax, yMax],
-  }
-}
-
-const getScreenBoundaries = (screen: Screen): Boundaries => {
-  const { topLeft, bottomRight } = screen
-  const [xMin, yMin] = topLeft
-  const [xMax, yMax] = bottomRight
-
-  return { xMin, xMax, yMin, yMax }
-}
-
-const pointIsInsideScreen = (point: Point, screen: Screen): boolean => {
-  const { xMin, xMax, yMin, yMax } = getScreenBoundaries(screen)
-  const [pointX, pointY] = point
-
-  return xMin <= pointX && pointX <= xMax && yMin <= pointY && pointY <= yMax
-}
-
-const getScreenAsLines = (screen: Screen): [Line, Line, Line, Line] => {
-  const { topLeft, topRight, bottomLeft, bottomRight } = screen
-  return [
-    [topLeft, topRight],
-    [topRight, bottomRight],
-    [bottomRight, bottomLeft],
-    [bottomLeft, topLeft],
-  ]
-}
-
-const lineIsInsideScreen = (line: Line, screen: Screen): boolean => {
-  // Note: This only checks if the entire line is in the screen
-  return pointIsInsideScreen(line[0], screen) && pointIsInsideScreen(line[1], screen)
-}
-
-const mapPointToViewportSpace = ([x, y]: Point, [viewportWidth, viewportHeight]: Size): Point => {
-  return [x * viewportWidth, y * viewportHeight]
-}
-
-const mapPointFromViewportSpace = ([x, y]: Point, [viewportWidth, viewportHeight]: Size): Point => {
-  return [x / viewportWidth, y / viewportHeight]
-}
-
-const getScreenOverlap = (screen: Screen, overlapping: Screen): ScreenOverlap => {
-  const isScreenInScreen =
-    pointIsInsideScreen(overlapping.topLeft, screen) &&
-    pointIsInsideScreen(overlapping.topRight, screen) &&
-    pointIsInsideScreen(overlapping.bottomRight, screen) &&
-    pointIsInsideScreen(overlapping.bottomLeft, screen)
-
-  if (isScreenInScreen) {
-    return {
-      type: 'screen',
-      screen: {
-        topLeft: mapPointBetweenScreens(overlapping.topLeft, screen, overlapping),
-        topRight: mapPointBetweenScreens(overlapping.topRight, screen, overlapping),
-        bottomRight: mapPointBetweenScreens(overlapping.bottomRight, screen, overlapping),
-        bottomLeft: mapPointBetweenScreens(overlapping.bottomLeft, screen, overlapping),
-      },
-    }
-  } else {
-    return {
-      type: 'lines',
-      lines: getScreenAsLines(overlapping).filter(it => lineIsInsideScreen(it, screen)),
-    }
-  }
-}
-
-const getRelativePointPosition = (point: Point, screen: Screen): Point => {
-  const { xMin, xMax, yMin, yMax } = getScreenBoundaries(screen)
-  const [x, y] = point
-
-  const relativeX = (x - xMin) / (xMax - xMin)
-  const relativeY = (y - yMin) / (yMax - yMin)
-
-  return [relativeX, relativeY]
-}
-
-const resolveRelativePointPosition = (relativePoint: Point, screen: Screen): Point => {
-  const { xMin, xMax, yMin, yMax } = getScreenBoundaries(screen)
-  const [x, y] = relativePoint
-
-  const resolvedX = xMin + x * (xMax - xMin)
-  const resolvedY = yMin + y * (yMax - yMin)
-
-  return [resolvedX, resolvedY]
-}
-
-const mapPointBetweenScreens = (point: Point, fromScreen: Screen, toScreen: Screen): Point => {
-  const relativePoint = getRelativePointPosition(point, fromScreen)
-
-  return resolveRelativePointPosition(relativePoint, toScreen)
-}
-
-const drawLine = (ctx: CanvasRenderingContext2D, line: Line, strokeStyle: string): void => {
-  const [startPoint, endPoint] = line
-
-  const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
-
-  ctx.lineWidth = 2
-  ctx.strokeStyle = strokeStyle
-
-  ctx.beginPath()
-  ctx.moveTo(...mapPointToViewportSpace(startPoint, screenSize))
-  ctx.lineTo(...mapPointToViewportSpace(endPoint, screenSize))
-  ctx.stroke()
-}
-
-const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen): void => {
-  const { topLeft, topRight, bottomLeft, bottomRight } = screen
-
-  const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
-
-  ctx.lineWidth = 2
-  ctx.strokeStyle = '#faf'
-
-  ctx.beginPath()
-  ctx.moveTo(...mapPointToViewportSpace(topLeft, screenSize))
-  ctx.lineTo(...mapPointToViewportSpace(topRight, screenSize))
-  ctx.lineTo(...mapPointToViewportSpace(bottomRight, screenSize))
-  ctx.lineTo(...mapPointToViewportSpace(bottomLeft, screenSize))
-  ctx.closePath()
-
-  ctx.stroke()
-}
-
-const getLinesFromOverlap = (overlap: ScreenOverlap): Line[] => {
-  switch (overlap.type) {
-    case 'lines':
-      return overlap.lines
-    case 'screen':
-      return getScreenAsLines(overlap.screen)
-    case 'partial':
-      throw new Error('not implemented')
-  }
-}
-
-const drawScreenOverlap = (
-  ctx: CanvasRenderingContext2D,
-  overlap: ScreenOverlap,
-  strokeStyle: string
-): void => {
-  const lines = getLinesFromOverlap(overlap)
-  for (const line of lines) {
-    drawLine(ctx, line, strokeStyle)
-  }
-}
-
-const getMousePoint = (
-  ctx: CanvasRenderingContext2D,
-  mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>
-) => {
-  const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
-  return mapPointFromViewportSpace([mouseEvent.clientX, mouseEvent.clientY], screenSize)
-}
 
 function App() {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
@@ -217,56 +54,20 @@ function App() {
 
     let cancelled = false
 
-    const drawFrame = (): void => {
+    const render = (): void => {
       if (cancelled) return
-
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-
-      for (const screen of screens) {
-        drawScreen(ctx, screen)
-      }
 
       const draftScreen =
         draftScreenOrigin !== undefined
           ? getScreenFromTwoPoints(draftScreenOrigin, mousePositionRef.current)
           : undefined
 
-      if (draftScreen) {
-        drawScreen(ctx, draftScreen)
-      }
+      drawFrame(ctx, screens, draftScreen)
 
-      const screensWithDraft = draftScreen !== undefined ? screens.concat(draftScreen) : screens
-      const generatedScreens: Screen[] = []
-
-      for (let k = 0; k < 3; k++) {
-        const color = ['#f00a', '#0f0a', '#00fa', '#fafa'][k]
-        const allScreens = [...screensWithDraft, ...generatedScreens]
-        for (let i = 0; i < allScreens.length; i++) {
-          const screen1 = allScreens[i]
-          for (let j = i + 1; j < allScreens.length; j++) {
-            const screen2 = allScreens[j]
-
-            // todo: wrong!
-            const overlap = getScreenOverlap(screen1, screen2)
-
-            if (overlap.type === 'screen') {
-              const asdf = JSON.stringify(overlap.screen)
-
-              // make sure screen isn't already in list
-              if (!generatedScreens.some(x => JSON.stringify(x) === asdf)) {
-                generatedScreens.push(overlap.screen)
-              }
-            }
-
-            drawScreenOverlap(ctx, overlap, color)
-          }
-        }
-      }
-
-      requestAnimationFrame(drawFrame)
+      requestAnimationFrame(render)
     }
 
-    requestAnimationFrame(drawFrame)
+    requestAnimationFrame(render)
 
     return () => {
       cancelled = true
