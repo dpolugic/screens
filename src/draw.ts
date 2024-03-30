@@ -23,7 +23,7 @@ const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen, strokeStyle: 
 const COLORS = '0123456789abcdef'
   .split('')
   .reverse()
-  .map(a => `#faf${a}`)
+  .map(a => `#fa${a}`)
 
 const MAX_DEPTH = 6
 
