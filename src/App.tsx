@@ -75,7 +75,7 @@ const getDraftState = (
     target = getRelativePointPosition(target, initialBoundaries)
 
     for (const k of patternPath) {
-      pattern = newPatterns[k]
+      pattern = pattern.subpatterns[k]
 
       const boundaries = getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
       anchor = getRelativePointPosition(anchor, boundaries)
