@@ -88,12 +88,12 @@ const lineIsInsideScreen = (line: Line, screen: Screen): boolean => {
   return pointIsInsideScreen(line[0], screen) && pointIsInsideScreen(line[1], screen)
 }
 
-const mapPointToScreenSpace = ([x, y]: Point, [screenSizeX, screenSizeY]: Size): Point => {
-  return [x * screenSizeX, y * screenSizeY]
+const mapPointToViewportSpace = ([x, y]: Point, [viewportWidth, viewportHeight]: Size): Point => {
+  return [x * viewportWidth, y * viewportHeight]
 }
 
-const mapPointFromScreenSpace = ([x, y]: Point, [screenSizeX, screenSizeY]: Size): Point => {
-  return [x / screenSizeX, y / screenSizeY]
+const mapPointFromViewportSpace = ([x, y]: Point, [viewportWidth, viewportHeight]: Size): Point => {
+  return [x / viewportWidth, y / viewportHeight]
 }
 
 const getScreenOverlap = (screen: Screen, overlapping: Screen): ScreenOverlap => {
@@ -156,8 +156,8 @@ const drawLine = (ctx: CanvasRenderingContext2D, line: Line, strokeStyle: string
   ctx.strokeStyle = strokeStyle
 
   ctx.beginPath()
-  ctx.moveTo(...mapPointToScreenSpace(startPoint, screenSize))
-  ctx.lineTo(...mapPointToScreenSpace(endPoint, screenSize))
+  ctx.moveTo(...mapPointToViewportSpace(startPoint, screenSize))
+  ctx.lineTo(...mapPointToViewportSpace(endPoint, screenSize))
   ctx.stroke()
 }
 
@@ -170,10 +170,10 @@ const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen): void => {
   ctx.strokeStyle = '#faf'
 
   ctx.beginPath()
-  ctx.moveTo(...mapPointToScreenSpace(topLeft, screenSize))
-  ctx.lineTo(...mapPointToScreenSpace(topRight, screenSize))
-  ctx.lineTo(...mapPointToScreenSpace(bottomRight, screenSize))
-  ctx.lineTo(...mapPointToScreenSpace(bottomLeft, screenSize))
+  ctx.moveTo(...mapPointToViewportSpace(topLeft, screenSize))
+  ctx.lineTo(...mapPointToViewportSpace(topRight, screenSize))
+  ctx.lineTo(...mapPointToViewportSpace(bottomRight, screenSize))
+  ctx.lineTo(...mapPointToViewportSpace(bottomLeft, screenSize))
   ctx.closePath()
 
   ctx.stroke()
@@ -206,7 +206,7 @@ const getMousePoint = (
   mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>
 ) => {
   const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
-  return mapPointFromScreenSpace([mouseEvent.clientX, mouseEvent.clientY], screenSize)
+  return mapPointFromViewportSpace([mouseEvent.clientX, mouseEvent.clientY], screenSize)
 }
 
 function App() {
