@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import './App.css'
 
 import styled from 'styled-components'
 
@@ -22,6 +21,28 @@ type Screen = {
   bottomRight: Point
 }
 
+type Boundaries = {
+  xMin: number
+  xMax: number
+  yMin: number
+  yMax: number
+}
+
+type ScreenOverlap =
+  | {
+      type: 'lines'
+      lines: Line[]
+    }
+  | {
+      type: 'screen'
+      screen: Screen
+    }
+  | {
+      type: 'partial'
+      screen: Screen
+      crop: Boundaries
+    }
+
 const getScreenFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Screen => {
   const xMin = Math.min(x1, x2)
   const xMax = Math.max(x1, x2)
@@ -36,12 +57,6 @@ const getScreenFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Screen => {
   }
 }
 
-type Boundaries = {
-  xMin: number
-  xMax: number
-  yMin: number
-  yMax: number
-}
 const getScreenBoundaries = (screen: Screen): Boundaries => {
   const { topLeft, bottomRight } = screen
   const [xMin, yMin] = topLeft
@@ -79,21 +94,6 @@ const mapPointToScreenSpace = ([x, y]: Point, [screenSizeX, screenSizeY]: Size):
 const mapPointFromScreenSpace = ([x, y]: Point, [screenSizeX, screenSizeY]: Size): Point => {
   return [x / screenSizeX, y / screenSizeY]
 }
-
-type ScreenOverlap =
-  | {
-      type: 'lines'
-      lines: Line[]
-    }
-  | {
-      type: 'screen'
-      screen: Screen
-    }
-  | {
-      type: 'partial'
-      screen: Screen
-      crop: Boundaries
-    }
 
 const getScreenOverlap = (screen: Screen, overlapping: Screen): ScreenOverlap => {
   const isScreenInScreen =
@@ -237,6 +237,7 @@ function App() {
         setScreens([])
       }
     }
+
     document.addEventListener('keydown', handleKeyDown)
 
     return () => {
