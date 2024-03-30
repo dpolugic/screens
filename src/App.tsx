@@ -51,6 +51,7 @@ function App() {
     const handleKeyDown = (keydownEvent: KeyboardEvent) => {
       if (keydownEvent.key === 'Escape') {
         setScreens([])
+        setPatterns([])
       }
     }
 
