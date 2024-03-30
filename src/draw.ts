@@ -6,7 +6,7 @@ const drawLine = (ctx: CanvasRenderingContext2D, line: Line, strokeStyle: string
 
   const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
 
-  ctx.lineWidth = 2
+  ctx.lineWidth = 1
   ctx.strokeStyle = strokeStyle
 
   ctx.beginPath()
@@ -20,7 +20,7 @@ const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen): void => {
 
   const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
 
-  ctx.lineWidth = 2
+  ctx.lineWidth = 1
   ctx.strokeStyle = '#faf'
 
   ctx.beginPath()
