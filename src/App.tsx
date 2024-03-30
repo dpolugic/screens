@@ -4,6 +4,7 @@ import styled from 'styled-components'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
+  display: block;
   width: 100%;
   height: 100%;
 `
