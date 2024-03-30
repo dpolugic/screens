@@ -39,7 +39,7 @@ const COLORS = '0123456789abcdef'
   .map(a => `#fa${a}`)
 
 const MIN_DEPTH = 3
-const MAX_DEPTH = 20
+const MAX_DEPTH = Infinity // we'll rely on limiting draw calls instead
 const MAX_DRAW_CALLS = 1e4
 
 const shouldCancel = (depth: number | undefined): boolean => {
@@ -88,7 +88,7 @@ function* drawPattern(
   if (boundaries.xMax - boundaries.xMin < 0.001) return
   if (boundaries.yMax - boundaries.yMin < 0.001) return
 
-  drawScreen(ctx, virtualScreen, COLORS[depth])
+  drawScreen(ctx, virtualScreen, COLORS[Math.min(COLORS.length - 1, depth)])
   yield
 
   const generators = []
