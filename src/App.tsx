@@ -1,25 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
-import styled, { createGlobalStyle } from 'styled-components'
+import styled from 'styled-components'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
   width: 100%;
   height: 100%;
-`
-
-const BodyStyle = createGlobalStyle`
-  html, body, #root {
-    width: 100vw;
-    height: 100vh;
-    margin: 0;
-    padding: 0;
-  }
-
-  *, *::before, *::after {
-    box-sizing: border-box !important; 
-  }
 `
 
 type Point = [number, number]
@@ -321,37 +308,34 @@ function App() {
   }, [ctx, draftScreenOrigin, screens])
 
   return (
-    <React.Fragment>
-      <BodyStyle />
-      <StyledCanvas
-        ref={canvasRef}
-        onMouseDown={e => {
-          const mousePoint = getMousePoint(e)
-          // create draft screen based on current cursor position
-          setDraftScreenOrigin(mousePoint)
-        }}
-        onMouseUp={e => {
-          if (!draftScreenOrigin) return
+    <StyledCanvas
+      ref={canvasRef}
+      onMouseDown={e => {
+        const mousePoint = getMousePoint(e)
+        // create draft screen based on current cursor position
+        setDraftScreenOrigin(mousePoint)
+      }}
+      onMouseUp={e => {
+        if (!draftScreenOrigin) return
 
-          const mousePoint = getMousePoint(e)
+        const mousePoint = getMousePoint(e)
 
-          // convert draft screen to real screen
+        // convert draft screen to real screen
 
-          const newScreen = getScreenFromTwoPoints(draftScreenOrigin, mousePoint)
-          const { topLeft, bottomRight } = newScreen
-          const [xMin, yMin] = topLeft
-          const [xMax, yMax] = bottomRight
-          setDraftScreenOrigin(undefined)
-          if (xMax - xMin < 0.01 || yMax - yMin < 0.01) return
-          setScreens(prev => [...prev, newScreen])
+        const newScreen = getScreenFromTwoPoints(draftScreenOrigin, mousePoint)
+        const { topLeft, bottomRight } = newScreen
+        const [xMin, yMin] = topLeft
+        const [xMax, yMax] = bottomRight
+        setDraftScreenOrigin(undefined)
+        if (xMax - xMin < 0.01 || yMax - yMin < 0.01) return
+        setScreens(prev => [...prev, newScreen])
 
-          // reset draft screen
-        }}
-        onMouseMove={e => {
-          mousePositionRef.current = getMousePoint(e)
-        }}
-      ></StyledCanvas>
-    </React.Fragment>
+        // reset draft screen
+      }}
+      onMouseMove={e => {
+        mousePositionRef.current = getMousePoint(e)
+      }}
+    />
   )
 }
 
