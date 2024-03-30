@@ -33,7 +33,7 @@ export const getScreenBoundaries = (screen: Screen): Boundaries => {
   return { xMin, xMax, yMin, yMax }
 }
 
-const pointIsInBoundaries = (point: Point, boundaries: Boundaries): boolean => {
+export const pointIsInBoundaries = (point: Point, boundaries: Boundaries): boolean => {
   const { xMin, xMax, yMin, yMax } = boundaries
   const [pointX, pointY] = point
 
