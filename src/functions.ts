@@ -63,7 +63,7 @@ export const mapPointBetweenScreens = (point: Point, fromScreen: Screen, toScree
   return resolveRelativePointPosition(relativePoint, toScreen)
 }
 
-const mapRelativeScreenToOtherScreen = (targetScreen: Screen, relativeScreen: Screen): Screen => {
+const mapRelativeScreenToOtherScreen = (relativeScreen: Screen, targetScreen: Screen): Screen => {
   return {
     topLeft: resolveRelativePointPosition(relativeScreen.topLeft, targetScreen),
     topRight: resolveRelativePointPosition(relativeScreen.topRight, targetScreen),
@@ -83,5 +83,5 @@ export const getMousePoint = (
 export const applyPatternToScreen = (screen: Screen, pattern: Pattern): Screen => {
   const relativePatternScreen = getScreenFromTwoPoints(pattern.anchor, pattern.target)
 
-  return mapRelativeScreenToOtherScreen(screen, relativePatternScreen)
+  return mapRelativeScreenToOtherScreen(relativePatternScreen, screen)
 }
