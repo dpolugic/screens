@@ -173,7 +173,7 @@ const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen): void => {
   ctx.lineTo(...mapPointToScreenSpace(topRight, screenSize))
   ctx.lineTo(...mapPointToScreenSpace(bottomRight, screenSize))
   ctx.lineTo(...mapPointToScreenSpace(bottomLeft, screenSize))
-  ctx.lineTo(...mapPointToScreenSpace(topLeft, screenSize))
+  ctx.closePath()
 
   ctx.stroke()
 }
