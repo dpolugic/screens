@@ -9,11 +9,11 @@ const StyledCanvas = styled.canvas`
   height: 100%;
 `
 
-type Point = [number, number]
+type Point = [x: number, y: number]
 
-type Line = { startPoint: Point; endPoint: Point }
+type Line = [startPoint: Point, endPoint: Point]
 
-type Size = [number, number]
+type Size = [width: number, height: number]
 
 type Screen = {
   topLeft: Point
@@ -60,16 +60,16 @@ const pointIsInsideScreen = (point: Point, screen: Screen): boolean => {
 const getScreenAsLines = (screen: Screen): [Line, Line, Line, Line] => {
   const { topLeft, topRight, bottomLeft, bottomRight } = screen
   return [
-    { startPoint: topLeft, endPoint: topRight },
-    { startPoint: topRight, endPoint: bottomRight },
-    { startPoint: bottomRight, endPoint: bottomLeft },
-    { startPoint: bottomLeft, endPoint: topLeft },
+    [topLeft, topRight],
+    [topRight, bottomRight],
+    [bottomRight, bottomLeft],
+    [bottomLeft, topLeft],
   ]
 }
 
 const lineIsInsideScreen = (line: Line, screen: Screen): boolean => {
   // Note: This only checks if the entire line is in the screen
-  return pointIsInsideScreen(line.startPoint, screen) && pointIsInsideScreen(line.endPoint, screen)
+  return pointIsInsideScreen(line[0], screen) && pointIsInsideScreen(line[1], screen)
 }
 
 const mapPointToScreenSpace = ([x, y]: Point, [screenSizeX, screenSizeY]: Size): Point => {
@@ -147,7 +147,7 @@ const mapPointBetweenScreens = (point: Point, fromScreen: Screen, toScreen: Scre
 }
 
 const drawLine = (ctx: CanvasRenderingContext2D, line: Line, strokeStyle: string): void => {
-  const { startPoint, endPoint } = line
+  const [startPoint, endPoint] = line
 
   const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
 
