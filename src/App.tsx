@@ -38,63 +38,46 @@ const getDraftState = (
 
   // if draft origin is inside existing screen, add a pattern instead
   if (res !== undefined) {
-    const [screenIndex, outerPatternIndex, ...patternPath] = res
+    const { screenIndex, nestedPath } = res
 
-    if (screenIndex === undefined) {
-      throw new Error('path cannot be zero length')
-    }
+    const [outerPatternIndex, ...otherPath] = nestedPath
 
     const outerScreenBoundaries = getScreenBoundaries(screens[screenIndex])
 
     let anchor = getRelativePointPosition(draft.anchor, outerScreenBoundaries)
     let target = getRelativePointPosition(draft.target, outerScreenBoundaries)
 
-    // This needs to be a special case because the model isn't so good
     if (outerPatternIndex === undefined) {
       return {
         screens,
-        patterns: [
-          ...patterns,
-          {
-            anchor,
-            target,
-            subpatterns: [],
-          },
-        ],
+        patterns: patterns.concat({
+          anchor,
+          target,
+        }),
       }
     }
 
-    // hacky deep clone
-    const newPatterns = JSON.parse(JSON.stringify(patterns))
-
-    let pattern = newPatterns[outerPatternIndex]
+    let pattern = patterns[outerPatternIndex]
 
     // ...
     const initialBoundaries = getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
     anchor = getRelativePointPosition(anchor, initialBoundaries)
     target = getRelativePointPosition(target, initialBoundaries)
 
-    for (const k of patternPath) {
-      pattern = pattern.subpatterns[k]
+    for (const k of otherPath) {
+      pattern = patterns[k]
 
       const boundaries = getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
       anchor = getRelativePointPosition(anchor, boundaries)
       target = getRelativePointPosition(target, boundaries)
     }
 
-    pattern.subpatterns.push({
-      anchor,
-      target,
-      subpatterns: [],
-    })
-
-    return { screens, patterns: newPatterns }
+    return { screens, patterns: patterns.concat({ anchor, target }) }
   } else {
     // else, create top-level screen
     const newScreen = getScreenFromTwoPoints(draft.anchor, draft.target)
-    const newScreens = [...screens, newScreen]
 
-    return { screens: newScreens, patterns }
+    return { screens: screens.concat(newScreen), patterns }
   }
 }
 

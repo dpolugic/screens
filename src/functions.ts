@@ -1,4 +1,4 @@
-import { BasePattern, Boundaries, Pattern, Point, Screen, Size } from './types'
+import { Boundaries, Pattern, Point, Screen, Size } from './types'
 
 export const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundaries => {
   const xMin = Math.min(x1, x2)
@@ -103,7 +103,7 @@ export const applyPatternToScreen = (screen: Screen, pattern: Pattern): Screen =
   return mapRelativeScreenToOtherScreen(relativePatternScreen, screen)
 }
 
-const convertScreenToPattern = (screen: Screen): BasePattern => {
+const convertScreenToPattern = (screen: Screen): Pattern => {
   const { xMin, xMax, yMin, yMax } = getScreenBoundaries(screen)
 
   // arbitrary. todo: store direction for screens like we do for patterns.
@@ -113,7 +113,7 @@ const convertScreenToPattern = (screen: Screen): BasePattern => {
   }
 }
 
-const combinePatterns = (parent: BasePattern, child: BasePattern): BasePattern => {
+const combinePatterns = (parent: Pattern, child: Pattern): Pattern => {
   const parentBoundaries = getBoundariesFromTwoPoints(parent.anchor, parent.target)
 
   return {
@@ -122,27 +122,32 @@ const combinePatterns = (parent: BasePattern, child: BasePattern): BasePattern =
   }
 }
 
-type ClickedPath = number[]
+type NestedPath = number[]
 
-const MAX_DEPTH = 6
+export type ClickedPath = {
+  screenIndex: number
+  nestedPath: NestedPath
+}
+
+const MAX_DEPTH = 4
 
 const findClickedPattern = (
-  previousBasePattern: BasePattern,
-  childPatterns: Pattern[],
+  previousBasePattern: Pattern,
+  patterns: Pattern[],
   point: Point, // point is relative to previous base pattern
   path: number[] = []
-): ClickedPath | undefined => {
+): NestedPath | undefined => {
   if (path.length > MAX_DEPTH) return undefined
 
-  let best: ClickedPath | undefined = undefined
+  let best: NestedPath | undefined = undefined
 
-  for (let i = 0; i < childPatterns.length; i++) {
-    const pattern = childPatterns[i]
+  for (let i = 0; i < patterns.length; i++) {
+    const pattern = patterns[i]
     const newBasePattern = combinePatterns(previousBasePattern, pattern)
     const newBoundaries = getBoundariesFromTwoPoints(newBasePattern.anchor, newBasePattern.target)
     const newPath = path.concat(i)
 
-    const nestedResult = findClickedPattern(newBasePattern, pattern.subpatterns, point, newPath)
+    const nestedResult = findClickedPattern(newBasePattern, patterns, point, newPath)
 
     if (nestedResult !== undefined) {
       if (best === undefined || nestedResult.length > best.length) {
@@ -159,10 +164,11 @@ const findClickedPattern = (
   return best
 }
 
-const ROOT_PATTERN: BasePattern = {
-  anchor: [0, 0],
-  target: [1, 1],
-}
+// const ROOT_PATTERN: Pattern = {
+//   anchor: [0, 0],
+//   target: [1, 1],
+// }
+
 export const findClickedScreenOrPattern = (
   screens: Screen[],
   patterns: Pattern[],
@@ -171,10 +177,27 @@ export const findClickedScreenOrPattern = (
   // we'll search a few levels only
   // we're interested in the deepest level that contains the point, since that is rendered on top.
 
-  const screensAsPatterns: Pattern[] = screens.map(screen => ({
-    ...convertScreenToPattern(screen),
-    subpatterns: patterns,
-  }))
+  let best: ClickedPath | undefined = undefined
+  for (let i = 0; i < screens.length; i++) {
+    const clickedPath = findClickedPattern(convertScreenToPattern(screens[i]), patterns, point)
 
-  return findClickedPattern(ROOT_PATTERN, screensAsPatterns, point)
+    if (clickedPath !== undefined) {
+      if (best === undefined || clickedPath.length > best.nestedPath.length) {
+        best = {
+          screenIndex: i,
+          nestedPath: clickedPath,
+        }
+      }
+    } else if (pointIsInBoundaries(point, getScreenBoundaries(screens[i]))) {
+      // only check current depth if there's no nested result
+      if (best === undefined) {
+        best = {
+          screenIndex: i,
+          nestedPath: [],
+        }
+      }
+    }
+  }
+
+  return best
 }

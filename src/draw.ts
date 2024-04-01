@@ -111,9 +111,6 @@ function* drawPattern(
   yield
 
   const generators = []
-  for (const subpattern of pattern.subpatterns) {
-    generators.push(drawPattern(ctx, virtualScreen, originalPatterns, subpattern, depth + 1))
-  }
 
   for (const originalPattern of originalPatterns) {
     generators.push(drawPattern(ctx, virtualScreen, originalPatterns, originalPattern, depth + 1))
@@ -129,8 +126,6 @@ export const drawFrame = (ctx: CanvasRenderingContext2D, screens: Screen[], patt
   for (const screen of screens) {
     drawScreen(ctx, screen, COLORS[0])
   }
-
-  //   const screensWithDraft = draftScreen !== undefined ? screens.concat(draftScreen) : screens
 
   // Draw virtual screens
   const generators = []
