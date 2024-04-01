@@ -20,7 +20,7 @@ const MIN_DEPTH = 3
 const MAX_DEPTH = Infinity
 const MAX_DRAW_CALLS = 1e4
 const SIZE_LIMIT = 0.001
-const DEBUG = false as boolean
+const DEBUG = true as boolean
 
 // -- hacky global state
 
@@ -63,6 +63,10 @@ const isPatternOutOfBounds = (pattern: AbsolutePattern): boolean => {
 const isPatternTooSmall = (pattern: AbsolutePattern): boolean => {
   const boundaries = getBoundariesFromPattern(pattern)
   return boundaries.xMax - boundaries.xMin < SIZE_LIMIT || boundaries.yMax - boundaries.yMin < SIZE_LIMIT
+}
+
+const isValidPattern = (pattern: AbsolutePattern): boolean => {
+  return !isPatternTooSmall(pattern) && !isPatternOutOfBounds(pattern)
 }
 
 const measure = (f: () => void): number => {
@@ -143,8 +147,7 @@ function* drawPattern(
   globalMutableState.drawPatternCalls += 1
 
   if (shouldCancelEarly(depth, globalMutableState)) return
-  if (isPatternOutOfBounds(absolutePattern)) return
-  if (isPatternTooSmall(absolutePattern)) return
+  if (!isValidPattern(absolutePattern)) return
 
   drawScreen(ctx, absolutePattern, COLORS[Math.min(COLORS.length - 1, depth)], globalMutableState)
   yield
@@ -152,10 +155,15 @@ function* drawPattern(
   // Don't bother handling the next level if we're just going to cancel early.
   if (shouldCancelEarly(depth + 1, globalMutableState)) return
 
-  const generators = patterns.map(pattern => {
+  const generators = patterns.flatMap(pattern => {
     const virtualScreen = combinePatterns(absolutePattern, pattern)
-    return drawPattern(ctx, virtualScreen, patterns, globalMutableState, depth + 1)
+
+    return isValidPattern(virtualScreen)
+      ? drawPattern(ctx, virtualScreen, patterns, globalMutableState, depth + 1)
+      : []
   })
+
+  if (generators.length === 0) return
 
   yield* runInParallel(generators)
 }
