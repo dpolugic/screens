@@ -48,10 +48,12 @@ export const mapPointToViewportSpace = ([x, y]: Point, [viewportWidth, viewportH
   return [x * viewportWidth, y * viewportHeight]
 }
 
+// ts-unused-exports:disable-next-line
 export const mapPointFromViewportSpace = ([x, y]: Point, [viewportWidth, viewportHeight]: Size): Point => {
   return [x / viewportWidth, y / viewportHeight]
 }
 
+// ts-unused-exports:disable-next-line
 export const getRelativePointPosition = (point: Point, boundaries: Boundaries): Point => {
   const { xMin, xMax, yMin, yMax } = boundaries
   const [x, y] = point
@@ -69,6 +71,7 @@ export const getRelativePatternPosition = (pattern: Pattern, boundaries: Boundar
   }
 }
 
+// ts-unused-exports:disable-next-line
 export const resolveRelativePointPosition = (relativePoint: Point, boundaries: Boundaries): Point => {
   const { xMin, xMax, yMin, yMax } = boundaries
   const [x, y] = relativePoint
