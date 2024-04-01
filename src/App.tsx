@@ -157,7 +157,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [ctx, draftScreenOrigin, screens, patterns])
+  }, [ctx, draftScreenOrigin, screens, patterns, draftClickResult])
 
   return (
     <StyledCanvas
