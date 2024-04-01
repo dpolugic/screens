@@ -111,6 +111,7 @@ function App() {
   })
 
   useEffect(() => {
+    // The preview is rendered elsewhere, don't do it here.
     if (draftClick !== undefined) return
 
     let cancelled = false
@@ -118,14 +119,12 @@ function App() {
       if (cancelled) return
 
       const res = render(state, { reset: false })
-
       if (!res.done) {
         requestAnimationFrame(renderLoop)
       }
     }
 
     const res = render(state, { reset: true })
-
     if (!res.done) {
       requestAnimationFrame(renderLoop)
     }

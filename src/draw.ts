@@ -159,16 +159,16 @@ export const drawFrame = (
     queueIterations: 0,
   }
 
-  const duration = measure(() => {
-    if (options.reset) {
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-      drawQueue = state.screens.map(screen => ({
-        currentPattern: screen,
-        depth: 0,
-      }))
-      globalMutableState.maxQueueSize = drawQueue.length
-    }
+  if (options.reset) {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+    drawQueue = state.screens.map(screen => ({
+      currentPattern: screen,
+      depth: 0,
+    }))
+    globalMutableState.maxQueueSize = drawQueue.length
+  }
 
+  const duration = measure(() => {
     draw(ctx, state, globalMutableState, drawQueue)
   })
 
@@ -178,8 +178,9 @@ export const drawFrame = (
     )
   }
 
-  // Cancel everything if queue becomes too large
+  // Give up if queue becomes too large.
   if (drawQueue.length > MAX_QUEUE_SIZE) {
+    console.warn('Maximum queue size reached. Rendering cancelled.')
     drawQueue = []
     return { done: true }
   }
