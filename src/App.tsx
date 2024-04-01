@@ -9,7 +9,7 @@ import {
   getMousePoint,
   getRelativePatternPosition,
 } from './functions'
-import { AbsolutePattern, Point, State, asAbsolutePattern } from './types'
+import { Point, State, asAbsolutePattern } from './types'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
@@ -18,20 +18,21 @@ const StyledCanvas = styled.canvas`
   height: 100%;
 `
 
-const getDraftState = (
-  state: State,
-  clickedPath: ClickedPath | undefined,
-  draftPattern: AbsolutePattern | undefined
-): State => {
-  if (draftPattern === undefined) return state
+const getDraftState = (state: State, draftClick: DraftClick | undefined, mousePosition: Point): State => {
+  if (draftClick === undefined) return state
 
-  if (clickedPath === undefined) {
+  const draftPattern = asAbsolutePattern({
+    anchor: draftClick.anchor,
+    target: mousePosition,
+  })
+
+  if (draftClick.clickedPath === undefined) {
     // create top-level screen
     return { ...state, screens: state.screens.concat(draftPattern) }
   }
 
   // if draft origin is inside existing screen, add a pattern instead
-  const { screenIndex, nestedPath } = clickedPath
+  const { screenIndex, nestedPath } = draftClick.clickedPath
 
   const outerScreenBoundaries = getBoundariesFromPattern(state.screens[screenIndex])
   let newDraft = getRelativePatternPosition(draftPattern, outerScreenBoundaries)
@@ -106,16 +107,7 @@ function App() {
     const render = (): void => {
       if (cancelled) return
 
-      const draftState = getDraftState(
-        state,
-        draftClick?.clickedPath,
-        draftClick !== undefined
-          ? asAbsolutePattern({
-              anchor: draftClick.anchor,
-              target: mousePositionRef.current,
-            })
-          : undefined
-      )
+      const draftState = getDraftState(state, draftClick, mousePositionRef.current)
 
       drawFrame(ctx, draftState)
 
@@ -160,16 +152,7 @@ function App() {
         if (Math.abs(x2 - x1) < 0.01) return
         if (Math.abs(y2 - y1) < 0.01) return
 
-        const newState = getDraftState(
-          state,
-          draftClick.clickedPath,
-          asAbsolutePattern({
-            anchor: draftClick.anchor,
-            target: mousePositionRef.current,
-          })
-        )
-
-        setState(newState)
+        setState(prevState => getDraftState(prevState, draftClick, mousePositionRef.current))
       }}
       onMouseMove={e => {
         if (!ctx) return
