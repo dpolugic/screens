@@ -10,16 +10,11 @@ import {
 } from './types'
 
 const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundaries => {
-  const xMin = Math.min(x1, x2)
-  const xMax = Math.max(x1, x2)
-  const yMin = Math.min(y1, y2)
-  const yMax = Math.max(y1, y2)
-
   return {
-    xMin,
-    xMax,
-    yMin,
-    yMax,
+    xMin: Math.min(x1, x2),
+    xMax: Math.max(x1, x2),
+    yMin: Math.min(y1, y2),
+    yMax: Math.max(y1, y2),
   }
 }
 
