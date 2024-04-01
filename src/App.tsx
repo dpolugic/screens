@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import styled from 'styled-components'
-import { drawFrame } from './draw'
+import { RenderOptions, drawFrame } from './draw'
 import {
   ClickedPath,
   findClickedScreenOrPattern,
@@ -103,17 +103,31 @@ function App() {
     }
   })
 
-  const render = useStableFunction((renderState: State) => {
+  const render = useStableFunction((renderState: State, renderOptions: RenderOptions) => {
     if (!ctx) return
 
-    requestAnimationFrame(() => {
-      drawFrame(ctx, renderState, { lowerQuality: draftClick !== undefined })
-    })
+    drawFrame(ctx, renderState, renderOptions)
   })
 
   useEffect(() => {
-    render(state)
-  }, [render, state])
+    if (draftClick !== undefined) return
+
+    let cancelled = false
+    const renderLoop = () => {
+      if (cancelled) return
+      render(state, { reset: false })
+
+      requestAnimationFrame(renderLoop)
+    }
+
+    render(state, { reset: true })
+
+    requestAnimationFrame(renderLoop)
+
+    return () => {
+      cancelled = true
+    }
+  }, [draftClick, render, state])
 
   return (
     <StyledCanvas
@@ -156,7 +170,7 @@ function App() {
         if (draftClick !== undefined) {
           const draftState = getDraftState(state, draftClick, mousePositionRef.current)
 
-          render(draftState)
+          render(draftState, { reset: true })
         }
       }}
     />

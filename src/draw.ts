@@ -16,6 +16,8 @@ const COLORS = '0123456789abcdef'
   .map(a => `#fa${a}`)
 
 const MIN_DEPTH = 3
+const MAX_DEPTH = Infinity
+const MAX_DRAW_CALLS = 1e4
 const SIZE_LIMIT = 0.001
 const DEBUG = true as boolean
 
@@ -100,8 +102,8 @@ const drawScreen = (
   ctx.stroke()
 }
 
-type RenderOptions = {
-  lowerQuality: boolean
+export type RenderOptions = {
+  reset: boolean
 }
 
 type QueueEntry = {
@@ -113,25 +115,15 @@ const draw = (
   ctx: CanvasRenderingContext2D,
   state: State,
   globalMutableState: GlobalMutableState,
-  options: RenderOptions
+  queue: QueueEntry[]
 ): void => {
-  const maxDepth = options.lowerQuality ? 50 : Infinity
-  const maxDrawCalls = options.lowerQuality ? 1e3 : 1e4
-
-  const queue: QueueEntry[] = state.screens.map(screen => ({
-    currentPattern: screen,
-    depth: 0,
-  }))
-
-  globalMutableState.maxQueueSize = queue.length
-
   while (queue.length > 0) {
     globalMutableState.queueIterations += 1
     const { currentPattern, depth } = queue.shift()!
 
-    if (depth > maxDepth) break
+    if (depth > MAX_DEPTH) break
     // Always render to MIN_DEPTH even if the draw call budget is empty
-    if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= maxDrawCalls) break
+    if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= MAX_DRAW_CALLS) break
 
     globalMutableState.drawScreenCalls += 1
     drawScreen(ctx, currentPattern, COLORS[Math.min(COLORS.length - 1, depth)])
@@ -151,6 +143,8 @@ const draw = (
   }
 }
 
+let cachedQueue: QueueEntry[] = []
+
 export const drawFrame = (ctx: CanvasRenderingContext2D, state: State, options: RenderOptions): void => {
   const globalMutableState: GlobalMutableState = {
     drawScreenCalls: 0,
@@ -159,9 +153,18 @@ export const drawFrame = (ctx: CanvasRenderingContext2D, state: State, options: 
   }
 
   const duration = measure(() => {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+    if (options.reset) {
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-    draw(ctx, state, globalMutableState, options)
+      cachedQueue = state.screens.map(screen => ({
+        currentPattern: screen,
+        depth: 0,
+      }))
+
+      globalMutableState.maxQueueSize = cachedQueue.length
+    }
+
+    draw(ctx, state, globalMutableState, cachedQueue)
   })
 
   if (DEBUG) {
