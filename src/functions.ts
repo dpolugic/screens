@@ -1,6 +1,6 @@
 import { Boundaries, Pattern, Point, Screen, Size } from './types'
 
-export const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundaries => {
+const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundaries => {
   const xMin = Math.min(x1, x2)
   const xMax = Math.max(x1, x2)
   const yMin = Math.min(y1, y2)
@@ -12,6 +12,10 @@ export const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Bo
     yMin,
     yMax,
   }
+}
+
+export const getBoundariesFromPattern = (pattern: Pattern): Boundaries => {
+  return getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
 }
 
 export const getScreenFromTwoPoints = (p1: Point, p2: Point): Screen => {
@@ -60,6 +64,13 @@ export const getRelativePointPosition = (point: Point, boundaries: Boundaries): 
   const relativeY = (y - yMin) / (yMax - yMin)
 
   return [relativeX, relativeY]
+}
+
+export const getRelativePatternPosition = (pattern: Pattern, boundaries: Boundaries): Pattern => {
+  return {
+    anchor: getRelativePointPosition(pattern.anchor, boundaries),
+    target: getRelativePointPosition(pattern.target, boundaries),
+  }
 }
 
 export const resolveRelativePointPosition = (relativePoint: Point, boundaries: Boundaries): Point => {
@@ -114,7 +125,7 @@ const convertScreenToPattern = (screen: Screen): Pattern => {
 }
 
 const combinePatterns = (parent: Pattern, child: Pattern): Pattern => {
-  const parentBoundaries = getBoundariesFromTwoPoints(parent.anchor, parent.target)
+  const parentBoundaries = getBoundariesFromPattern(parent)
 
   return {
     anchor: resolveRelativePointPosition(child.anchor, parentBoundaries),
@@ -144,7 +155,7 @@ const findClickedPattern = (
   for (let i = 0; i < patterns.length; i++) {
     const pattern = patterns[i]
     const newBasePattern = combinePatterns(previousBasePattern, pattern)
-    const newBoundaries = getBoundariesFromTwoPoints(newBasePattern.anchor, newBasePattern.target)
+    const newBoundaries = getBoundariesFromPattern(newBasePattern)
     const newPath = path.concat(i)
 
     const nestedResult = findClickedPattern(newBasePattern, patterns, point, newPath)

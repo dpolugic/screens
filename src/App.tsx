@@ -4,9 +4,9 @@ import styled from 'styled-components'
 import { drawFrame } from './draw'
 import {
   findClickedScreenOrPattern,
-  getBoundariesFromTwoPoints,
+  getBoundariesFromPattern,
   getMousePoint,
-  getRelativePointPosition,
+  getRelativePatternPosition,
   getScreenBoundaries,
   getScreenFromTwoPoints,
 } from './functions'
@@ -22,7 +22,7 @@ const StyledCanvas = styled.canvas`
 const getDraftState = (
   screens: Screen[],
   patterns: Pattern[],
-  draft:
+  draftPattern:
     | {
         anchor: Point
         target: Point
@@ -32,50 +32,44 @@ const getDraftState = (
   screens: Screen[]
   patterns: Pattern[]
 } => {
-  if (draft === undefined) return { screens, patterns }
+  if (draftPattern === undefined) return { screens, patterns }
 
-  const res = findClickedScreenOrPattern(screens, patterns, draft.anchor)
+  const clickResult = findClickedScreenOrPattern(screens, patterns, draftPattern.anchor)
 
   // if draft origin is inside existing screen, add a pattern instead
-  if (res !== undefined) {
-    const { screenIndex, nestedPath } = res
+  if (clickResult !== undefined) {
+    const { screenIndex, nestedPath } = clickResult
 
     const [outerPatternIndex, ...otherPath] = nestedPath
 
     const outerScreenBoundaries = getScreenBoundaries(screens[screenIndex])
 
-    let anchor = getRelativePointPosition(draft.anchor, outerScreenBoundaries)
-    let target = getRelativePointPosition(draft.target, outerScreenBoundaries)
+    let newDraft = getRelativePatternPosition(draftPattern, outerScreenBoundaries)
 
     if (outerPatternIndex === undefined) {
       return {
         screens,
-        patterns: patterns.concat({
-          anchor,
-          target,
-        }),
+        patterns: patterns.concat(newDraft),
       }
     }
 
     let pattern = patterns[outerPatternIndex]
 
     // ...
-    const initialBoundaries = getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
-    anchor = getRelativePointPosition(anchor, initialBoundaries)
-    target = getRelativePointPosition(target, initialBoundaries)
+    const initialBoundaries = getBoundariesFromPattern(pattern)
+    newDraft = getRelativePatternPosition(newDraft, initialBoundaries)
 
     for (const k of otherPath) {
       pattern = patterns[k]
 
-      const boundaries = getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
-      anchor = getRelativePointPosition(anchor, boundaries)
-      target = getRelativePointPosition(target, boundaries)
+      const boundaries = getBoundariesFromPattern(pattern)
+      newDraft = getRelativePatternPosition(newDraft, boundaries)
     }
 
-    return { screens, patterns: patterns.concat({ anchor, target }) }
+    return { screens, patterns: patterns.concat(newDraft) }
   } else {
     // else, create top-level screen
-    const newScreen = getScreenFromTwoPoints(draft.anchor, draft.target)
+    const newScreen = getScreenFromTwoPoints(draftPattern.anchor, draftPattern.target)
 
     return { screens: screens.concat(newScreen), patterns }
   }
