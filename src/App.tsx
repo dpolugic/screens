@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 
 import styled from 'styled-components'
 import { DrawFrameResult, RenderOptions, drawFrame } from './draw'
@@ -45,26 +45,6 @@ type DraftClick = {
   clickedPath: ClickedPath | undefined
 }
 
-const useHandleResize = (canvasEl: HTMLCanvasElement | null): void => {
-  useEffect(() => {
-    if (!canvasEl) return
-
-    const handleResize = (): void => {
-      const { width, height } = canvasEl.getBoundingClientRect()
-      canvasEl.width = width
-      canvasEl.height = height
-    }
-
-    handleResize()
-
-    window.addEventListener('resize', handleResize)
-
-    return () => {
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [canvasEl])
-}
-
 const useOnKeydown = (f: (e: KeyboardEvent) => void) => {
   const stableCallback = useStableFunction(f)
 
@@ -88,13 +68,35 @@ function App() {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
   const mousePositionRef = useRef<AbsolutePoint>(BASE_MOUSE_POSITION)
 
+  // The canvas contents are cleared when we change its size. Make sure to re-render when this
+  // variable changes.
+  const [resizeCount, incrementResizeCount] = useReducer(x => x + 1, 0)
+
   const [state, setState] = useState<State>(BASE_STATE)
   const [draftClick, setDraftClick] = useState<DraftClick | undefined>(undefined)
 
   const ctx = useMemo(() => canvasEl?.getContext('2d'), [canvasEl])
 
   // Handle viewport size changes
-  useHandleResize(canvasEl)
+  useEffect(() => {
+    if (!canvasEl) return
+
+    const handleResize = () => {
+      const { width, height } = canvasEl.getBoundingClientRect()
+      canvasEl.width = width
+      canvasEl.height = height
+
+      incrementResizeCount()
+    }
+
+    handleResize()
+
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [canvasEl])
 
   // Handle keyboard commands
   useOnKeydown(event => {
@@ -132,7 +134,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [draftClick, render, state])
+  }, [draftClick, render, state, resizeCount])
 
   return (
     <StyledCanvas
