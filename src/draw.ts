@@ -23,7 +23,7 @@ const getPatternPoints = (pattern: Pattern): Point[] => {
   ]
 }
 
-const isPatternOutOfBounds = (pattern: Pattern): boolean => {
+const isPatternOutOfBounds = (pattern: AbsolutePattern): boolean => {
   // We'll ignore everything more than 1 viewport size away.
   // This is not fully accurate, but should be OK for most purposes.
   return !getPatternPoints(pattern).some(p =>
@@ -34,6 +34,11 @@ const isPatternOutOfBounds = (pattern: Pattern): boolean => {
       yMax: 2,
     })
   )
+}
+
+const isPatternTooSmall = (pattern: AbsolutePattern): boolean => {
+  const boundaries = getBoundariesFromPattern(pattern)
+  return boundaries.xMax - boundaries.xMin < 0.001 || boundaries.yMax - boundaries.yMin < 0.001
 }
 
 // hacky global state
@@ -111,10 +116,7 @@ function* drawPattern(
 ): Generator<void, void, void> {
   if (shouldCancel(depth)) return
   if (isPatternOutOfBounds(absolutePattern)) return
-
-  const boundaries = getBoundariesFromPattern(absolutePattern)
-  if (boundaries.xMax - boundaries.xMin < 0.001) return
-  if (boundaries.yMax - boundaries.yMin < 0.001) return
+  if (isPatternTooSmall(absolutePattern)) return
 
   drawScreen(ctx, absolutePattern, COLORS[Math.min(COLORS.length - 1, depth)])
   yield
