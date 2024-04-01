@@ -83,20 +83,19 @@ const shouldCancel = (depth: number): boolean => {
 }
 
 // Move each generator forward one step and then yield.
-function* runInParallel(generators: Generator<void, void, void>[], isDone: () => boolean) {
-  while (!isDone()) {
-    let allDone: boolean | undefined = true
+function* runInParallel(generators: Generator<void, void, void>[]) {
+  let allDone: boolean = true
+  do {
+    allDone = true
     for (const g of generators) {
       const res = g.next()
-      allDone &&= res.done
+      allDone &&= !!res.done
     }
-    if (allDone) break
-
     yield
-  }
+  } while (!allDone)
 }
 
-// Run generator until exhausted, as if it was a regular function.
+// Run generator until exhausted as if it was a regular function.
 function runUntilDone(generator: Generator<void, void, void>): void {
   let res
   do {
@@ -126,7 +125,7 @@ function* drawPattern(
     generators.push(drawPattern(ctx, virtualScreen, patterns, depth + 1))
   }
 
-  yield* runInParallel(generators, () => drawCalls > MAX_DRAW_CALLS)
+  yield* runInParallel(generators)
 }
 
 export const drawFrame = (
@@ -142,5 +141,5 @@ export const drawFrame = (
     generators.push(drawPattern(ctx, screen, patterns))
   }
 
-  runUntilDone(runInParallel(generators, () => drawCalls > MAX_DRAW_CALLS))
+  runUntilDone(runInParallel(generators))
 }
