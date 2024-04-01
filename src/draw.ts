@@ -63,8 +63,8 @@ const validatePatternPosition = (pattern: AbsolutePattern): boolean => {
 const validatePatternSize = (pattern: AbsolutePattern): boolean => {
   const boundaries = getBoundariesFromPattern(pattern)
   return (
-    boundaries.xMax - boundaries.xMin < MIN_PATTERN_SIZE ||
-    boundaries.yMax - boundaries.yMin < MIN_PATTERN_SIZE
+    boundaries.xMax - boundaries.xMin >= MIN_PATTERN_SIZE ||
+    boundaries.yMax - boundaries.yMin >= MIN_PATTERN_SIZE
   )
 }
 
