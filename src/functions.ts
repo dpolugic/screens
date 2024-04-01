@@ -44,10 +44,6 @@ export const pointIsInBoundaries = (point: Point, boundaries: Boundaries): boole
   return xMin <= pointX && pointX <= xMax && yMin <= pointY && pointY <= yMax
 }
 
-export const pointIsInsideScreen = (point: Point, screen: Screen): boolean => {
-  return pointIsInBoundaries(point, getScreenBoundaries(screen))
-}
-
 export const mapPointToViewportSpace = ([x, y]: Point, [viewportWidth, viewportHeight]: Size): Point => {
   return [x * viewportWidth, y * viewportHeight]
 }
@@ -81,12 +77,6 @@ export const resolveRelativePointPosition = (relativePoint: Point, boundaries: B
   const resolvedY = yMin + y * (yMax - yMin)
 
   return [resolvedX, resolvedY]
-}
-
-export const mapPointBetweenScreens = (point: Point, fromScreen: Screen, toScreen: Screen): Point => {
-  const relativePoint = getRelativePointPosition(point, getScreenBoundaries(fromScreen))
-
-  return resolveRelativePointPosition(relativePoint, getScreenBoundaries(toScreen))
 }
 
 const mapRelativeScreenToOtherScreen = (relativeScreen: Screen, targetScreen: Screen): Screen => {
