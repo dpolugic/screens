@@ -8,10 +8,8 @@ import {
   getBoundariesFromPattern,
   getMousePoint,
   getRelativePatternPosition,
-  getScreenBoundaries,
-  getScreenFromTwoPoints,
 } from './functions'
-import { Pattern, Point, Screen } from './types'
+import { Pattern, Point } from './types'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
@@ -21,7 +19,7 @@ const StyledCanvas = styled.canvas`
 `
 
 const getDraftState = (
-  screens: Screen[],
+  screens: Pattern[],
   patterns: Pattern[],
   clickOriginResult: ClickedPath | undefined,
   draftPattern:
@@ -31,48 +29,28 @@ const getDraftState = (
       }
     | undefined
 ): {
-  screens: Screen[]
+  screens: Pattern[]
   patterns: Pattern[]
 } => {
   if (draftPattern === undefined) return { screens, patterns }
 
-  // if draft origin is inside existing screen, add a pattern instead
-  if (clickOriginResult !== undefined) {
-    const { screenIndex, nestedPath } = clickOriginResult
-
-    const [outerPatternIndex, ...otherPath] = nestedPath
-
-    const outerScreenBoundaries = getScreenBoundaries(screens[screenIndex])
-
-    let newDraft = getRelativePatternPosition(draftPattern, outerScreenBoundaries)
-
-    if (outerPatternIndex === undefined) {
-      return {
-        screens,
-        patterns: patterns.concat(newDraft),
-      }
-    }
-
-    let pattern = patterns[outerPatternIndex]
-
-    // ...
-    const initialBoundaries = getBoundariesFromPattern(pattern)
-    newDraft = getRelativePatternPosition(newDraft, initialBoundaries)
-
-    for (const k of otherPath) {
-      pattern = patterns[k]
-
-      const boundaries = getBoundariesFromPattern(pattern)
-      newDraft = getRelativePatternPosition(newDraft, boundaries)
-    }
-
-    return { screens, patterns: patterns.concat(newDraft) }
-  } else {
-    // else, create top-level screen
-    const newScreen = getScreenFromTwoPoints(draftPattern.anchor, draftPattern.target)
-
-    return { screens: screens.concat(newScreen), patterns }
+  if (clickOriginResult === undefined) {
+    // create top-level screen
+    return { screens: screens.concat(draftPattern), patterns }
   }
+
+  // if draft origin is inside existing screen, add a pattern instead
+  const { screenIndex, nestedPath } = clickOriginResult
+
+  const outerScreenBoundaries = getBoundariesFromPattern(screens[screenIndex])
+  let newDraft = getRelativePatternPosition(draftPattern, outerScreenBoundaries)
+
+  for (const k of nestedPath) {
+    const boundaries = getBoundariesFromPattern(patterns[k])
+    newDraft = getRelativePatternPosition(newDraft, boundaries)
+  }
+
+  return { screens, patterns: patterns.concat(newDraft) }
 }
 
 function App() {
@@ -80,7 +58,7 @@ function App() {
   const mousePositionRef = useRef<Point>([0, 0])
 
   const [patterns, setPatterns] = useState<Pattern[]>([])
-  const [screens, setScreens] = useState<Screen[]>([])
+  const [screens, setScreens] = useState<Pattern[]>([])
   const [draftScreenOrigin, setDraftScreenOrigin] = useState<Point | undefined>(undefined)
 
   const draftClickResult = useMemo(() => {

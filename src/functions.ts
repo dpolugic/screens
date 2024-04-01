@@ -1,4 +1,4 @@
-import { Boundaries, Pattern, Point, Screen, Size } from './types'
+import { Boundaries, Pattern, Point, Size } from './types'
 
 const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundaries => {
   const xMin = Math.min(x1, x2)
@@ -16,25 +16,6 @@ const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundarie
 
 export const getBoundariesFromPattern = (pattern: Pattern): Boundaries => {
   return getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
-}
-
-export const getScreenFromTwoPoints = (p1: Point, p2: Point): Screen => {
-  const { xMin, xMax, yMin, yMax } = getBoundariesFromTwoPoints(p1, p2)
-
-  return {
-    topLeft: [xMin, yMin],
-    topRight: [xMax, yMin],
-    bottomLeft: [xMin, yMax],
-    bottomRight: [xMax, yMax],
-  }
-}
-
-export const getScreenBoundaries = (screen: Screen): Boundaries => {
-  const { topLeft, bottomRight } = screen
-  const [xMin, yMin] = topLeft
-  const [xMax, yMax] = bottomRight
-
-  return { xMin, xMax, yMin, yMax }
 }
 
 export const pointIsInBoundaries = (point: Point, boundaries: Boundaries): boolean => {
@@ -82,17 +63,6 @@ export const resolveRelativePointPosition = (relativePoint: Point, boundaries: B
   return [resolvedX, resolvedY]
 }
 
-const mapRelativeScreenToOtherScreen = (relativeScreen: Screen, targetScreen: Screen): Screen => {
-  const targetBoundaries = getScreenBoundaries(targetScreen)
-
-  return {
-    topLeft: resolveRelativePointPosition(relativeScreen.topLeft, targetBoundaries),
-    topRight: resolveRelativePointPosition(relativeScreen.topRight, targetBoundaries),
-    bottomRight: resolveRelativePointPosition(relativeScreen.bottomRight, targetBoundaries),
-    bottomLeft: resolveRelativePointPosition(relativeScreen.bottomLeft, targetBoundaries),
-  }
-}
-
 export const getMousePoint = (
   ctx: CanvasRenderingContext2D,
   mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>
@@ -101,23 +71,7 @@ export const getMousePoint = (
   return mapPointFromViewportSpace([mouseEvent.clientX, mouseEvent.clientY], screenSize)
 }
 
-export const applyPatternToScreen = (screen: Screen, pattern: Pattern): Screen => {
-  const relativePatternScreen = getScreenFromTwoPoints(pattern.anchor, pattern.target)
-
-  return mapRelativeScreenToOtherScreen(relativePatternScreen, screen)
-}
-
-const convertScreenToPattern = (screen: Screen): Pattern => {
-  const { xMin, xMax, yMin, yMax } = getScreenBoundaries(screen)
-
-  // arbitrary. todo: store direction for screens like we do for patterns.
-  return {
-    anchor: [xMin, yMin],
-    target: [xMax, yMax],
-  }
-}
-
-const combinePatterns = (parent: Pattern, child: Pattern): Pattern => {
+export const combinePatterns = (parent: Pattern, child: Pattern): Pattern => {
   const parentBoundaries = getBoundariesFromPattern(parent)
 
   return {
@@ -174,7 +128,7 @@ const findClickedPattern = (
 // }
 
 export const findClickedScreenOrPattern = (
-  screens: Screen[],
+  screens: Pattern[],
   patterns: Pattern[],
   point: Point
 ): ClickedPath | undefined => {
@@ -183,7 +137,7 @@ export const findClickedScreenOrPattern = (
 
   let best: ClickedPath | undefined = undefined
   for (let i = 0; i < screens.length; i++) {
-    const clickedPath = findClickedPattern(convertScreenToPattern(screens[i]), patterns, point)
+    const clickedPath = findClickedPattern(screens[i], patterns, point)
 
     if (clickedPath !== undefined) {
       if (best === undefined || clickedPath.length > best.nestedPath.length) {
@@ -192,7 +146,7 @@ export const findClickedScreenOrPattern = (
           nestedPath: clickedPath,
         }
       }
-    } else if (pointIsInBoundaries(point, getScreenBoundaries(screens[i]))) {
+    } else if (pointIsInBoundaries(point, getBoundariesFromPattern(screens[i]))) {
       // only check current depth if there's no nested result
       if (best === undefined) {
         best = {

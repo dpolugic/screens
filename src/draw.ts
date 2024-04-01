@@ -1,24 +1,31 @@
 import {
-  applyPatternToScreen,
-  getScreenBoundaries,
+  combinePatterns,
+  getBoundariesFromPattern,
   mapPointToViewportSpace,
   pointIsInBoundaries,
 } from './functions'
-import { Pattern, Screen, Size } from './types'
+import { Pattern, Point, Size } from './types'
 
-const mapScreenToViewportSpace = (screen: Screen, screenSize: Size): Screen => ({
-  topLeft: mapPointToViewportSpace(screen.topLeft, screenSize),
-  topRight: mapPointToViewportSpace(screen.topRight, screenSize),
-  bottomRight: mapPointToViewportSpace(screen.bottomRight, screenSize),
-  bottomLeft: mapPointToViewportSpace(screen.bottomLeft, screenSize),
+const mapPatternToViewportSpace = (pattern: Pattern, screenSize: Size): Pattern => ({
+  anchor: mapPointToViewportSpace(pattern.anchor, screenSize),
+  target: mapPointToViewportSpace(pattern.target, screenSize),
 })
 
-const isScreenOutOfBounds = (screen: Screen): boolean => {
-  const { topLeft, topRight, bottomLeft, bottomRight } = screen
+const getPatternPoints = (pattern: Pattern): Point[] => {
+  const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
 
+  return [
+    [xMin, yMin],
+    [xMax, yMin],
+    [xMax, yMax],
+    [xMin, yMax],
+  ]
+}
+
+const isPatternOutOfBounds = (pattern: Pattern): boolean => {
   // We'll ignore everything more than 1 viewport size away.
   // This is not fully accurate, but should be OK for most purposes.
-  return ![topLeft, topRight, bottomLeft, bottomRight].some(p =>
+  return !getPatternPoints(pattern).some(p =>
     pointIsInBoundaries(p, {
       xMin: -1,
       xMax: 2,
@@ -31,21 +38,23 @@ const isScreenOutOfBounds = (screen: Screen): boolean => {
 // hacky global state
 let drawCalls = 0
 
-const drawScreen = (ctx: CanvasRenderingContext2D, screen: Screen, strokeStyle: string): void => {
+const drawScreen = (ctx: CanvasRenderingContext2D, absolutePattern: Pattern, strokeStyle: string): void => {
   drawCalls += 1
 
   const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
-  const { topLeft, topRight, bottomLeft, bottomRight } = mapScreenToViewportSpace(screen, screenSize)
+
+  const viewportPattern = mapPatternToViewportSpace(absolutePattern, screenSize)
+  const [p1, p2, p3, p4] = getPatternPoints(viewportPattern)
 
   ctx.lineWidth = 1
   ctx.strokeStyle = strokeStyle
   ctx.fillStyle = 'black'
 
   ctx.beginPath()
-  ctx.moveTo(...topLeft)
-  ctx.lineTo(...topRight)
-  ctx.lineTo(...bottomRight)
-  ctx.lineTo(...bottomLeft)
+  ctx.moveTo(...p1)
+  ctx.lineTo(...p2)
+  ctx.lineTo(...p3)
+  ctx.lineTo(...p4)
   ctx.closePath()
 
   ctx.fill()
@@ -93,17 +102,18 @@ function runUntilDone(generator: Generator<void, void, void>): void {
 
 function* drawPattern(
   ctx: CanvasRenderingContext2D,
-  screen: Screen,
+  absolutePattern: Pattern,
   originalPatterns: Pattern[],
   pattern: Pattern,
   depth: number = 1
 ): Generator<void, void, void> {
   if (shouldCancel(depth)) return
-  if (isScreenOutOfBounds(screen)) return
 
-  const virtualScreen = applyPatternToScreen(screen, pattern)
+  const virtualScreen = combinePatterns(absolutePattern, pattern)
 
-  const boundaries = getScreenBoundaries(virtualScreen)
+  if (isPatternOutOfBounds(virtualScreen)) return
+
+  const boundaries = getBoundariesFromPattern(virtualScreen)
   if (boundaries.xMax - boundaries.xMin < 0.001) return
   if (boundaries.yMax - boundaries.yMin < 0.001) return
 
@@ -119,7 +129,7 @@ function* drawPattern(
   yield* runInParallel(generators, () => drawCalls > MAX_DRAW_CALLS)
 }
 
-export const drawFrame = (ctx: CanvasRenderingContext2D, screens: Screen[], patterns: Pattern[]): void => {
+export const drawFrame = (ctx: CanvasRenderingContext2D, screens: Pattern[], patterns: Pattern[]): void => {
   drawCalls = 0
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
