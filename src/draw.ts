@@ -139,7 +139,7 @@ function runUntilDone(generator: Generator<void, void, void>): void {
 
 function* drawPattern(
   ctx: CanvasRenderingContext2D,
-  absolutePattern: AbsolutePattern,
+  validatedPattern: AbsolutePattern,
   patterns: Pattern[],
   globalMutableState: GlobalMutableState,
   depth: number = 0
@@ -147,16 +147,15 @@ function* drawPattern(
   globalMutableState.drawPatternCalls += 1
 
   if (shouldCancelEarly(depth, globalMutableState)) return
-  if (!isValidPattern(absolutePattern)) return
 
-  drawScreen(ctx, absolutePattern, COLORS[Math.min(COLORS.length - 1, depth)], globalMutableState)
+  drawScreen(ctx, validatedPattern, COLORS[Math.min(COLORS.length - 1, depth)], globalMutableState)
   yield
 
   // Don't bother handling the next level if we're just going to cancel early.
   if (shouldCancelEarly(depth + 1, globalMutableState)) return
 
   const generators = patterns.flatMap(pattern => {
-    const virtualScreen = combinePatterns(absolutePattern, pattern)
+    const virtualScreen = combinePatterns(validatedPattern, pattern)
 
     return isValidPattern(virtualScreen)
       ? drawPattern(ctx, virtualScreen, patterns, globalMutableState, depth + 1)
@@ -177,8 +176,8 @@ export const drawFrame = (ctx: CanvasRenderingContext2D, state: State): void => 
   const duration = measure(() => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-    const generators = state.screens.map(screen => {
-      return drawPattern(ctx, screen, state.patterns, globalMutableState)
+    const generators = state.screens.flatMap(screen => {
+      return isValidPattern(screen) ? [drawPattern(ctx, screen, state.patterns, globalMutableState)] : []
     })
 
     runUntilDone(runInParallel(generators))
