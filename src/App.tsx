@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { drawFrame } from './draw'
 import {
+  ClickedPath,
   findClickedScreenOrPattern,
   getBoundariesFromPattern,
   getMousePoint,
@@ -22,6 +23,7 @@ const StyledCanvas = styled.canvas`
 const getDraftState = (
   screens: Screen[],
   patterns: Pattern[],
+  clickOriginResult: ClickedPath | undefined,
   draftPattern:
     | {
         anchor: Point
@@ -34,11 +36,9 @@ const getDraftState = (
 } => {
   if (draftPattern === undefined) return { screens, patterns }
 
-  const clickResult = findClickedScreenOrPattern(screens, patterns, draftPattern.anchor)
-
   // if draft origin is inside existing screen, add a pattern instead
-  if (clickResult !== undefined) {
-    const { screenIndex, nestedPath } = clickResult
+  if (clickOriginResult !== undefined) {
+    const { screenIndex, nestedPath } = clickOriginResult
 
     const [outerPatternIndex, ...otherPath] = nestedPath
 
@@ -82,6 +82,12 @@ function App() {
   const [patterns, setPatterns] = useState<Pattern[]>([])
   const [screens, setScreens] = useState<Screen[]>([])
   const [draftScreenOrigin, setDraftScreenOrigin] = useState<Point | undefined>(undefined)
+
+  const draftClickResult = useMemo(() => {
+    if (draftScreenOrigin === undefined) return undefined
+
+    return findClickedScreenOrPattern(screens, patterns, draftScreenOrigin)
+  }, [draftScreenOrigin, patterns, screens])
 
   const ctx = useMemo(() => canvasEl?.getContext('2d'), [canvasEl])
 
@@ -132,6 +138,7 @@ function App() {
       const { screens: draftScreens, patterns: draftPatterns } = getDraftState(
         screens,
         patterns,
+        draftClickResult,
         draftScreenOrigin !== undefined
           ? {
               anchor: draftScreenOrigin,
@@ -180,10 +187,15 @@ function App() {
         if (Math.abs(x2 - x1) < 0.01) return
         if (Math.abs(y2 - y1) < 0.01) return
 
-        const { screens: draftScreens, patterns: draftPatterns } = getDraftState(screens, patterns, {
-          anchor: draftScreenOrigin,
-          target: mousePositionRef.current,
-        })
+        const { screens: draftScreens, patterns: draftPatterns } = getDraftState(
+          screens,
+          patterns,
+          draftClickResult,
+          {
+            anchor: draftScreenOrigin,
+            target: mousePositionRef.current,
+          }
+        )
 
         setScreens(draftScreens)
         setPatterns(draftPatterns)
