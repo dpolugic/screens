@@ -5,7 +5,7 @@ import {
   mapPointToViewportSpace,
   pointIsInBoundaries,
 } from './functions'
-import { AbsolutePattern, Pattern, Point, Size, State } from './types'
+import { AbsolutePattern, Boundaries, Pattern, Point, Size, State } from './types'
 
 // -- constants
 
@@ -48,20 +48,19 @@ const getPatternPoints = (pattern: Pattern): Point[] => {
   ]
 }
 
-const isPatternOutOfBounds = (pattern: AbsolutePattern): boolean => {
-  // We'll ignore everything that's a bit outside the viewport.
-  // This is not really accurate, but should be OK for our purposes.
-  return !getPatternPoints(pattern).some(p =>
-    pointIsInBoundaries(p, {
-      xMin: -0.1,
-      xMax: 1.1,
-      yMin: -0.1,
-      yMax: 1.1,
-    })
-  )
+// We'll ignore everything that's a bit outside the viewport.
+// This is not really accurate, but should be OK for our purposes.
+const VALID_BOUNDARIES: Boundaries = {
+  xMin: -0.1,
+  xMax: 1.1,
+  yMin: -0.1,
+  yMax: 1.1,
+}
+const validatePatternPosition = (pattern: AbsolutePattern): boolean => {
+  return getPatternPoints(pattern).some(p => pointIsInBoundaries(p, VALID_BOUNDARIES))
 }
 
-const isPatternTooSmall = (pattern: AbsolutePattern): boolean => {
+const validatePatternSize = (pattern: AbsolutePattern): boolean => {
   const boundaries = getBoundariesFromPattern(pattern)
   return (
     boundaries.xMax - boundaries.xMin < MIN_PATTERN_SIZE ||
@@ -70,7 +69,7 @@ const isPatternTooSmall = (pattern: AbsolutePattern): boolean => {
 }
 
 const isValidPattern = (pattern: AbsolutePattern): boolean => {
-  return !isPatternTooSmall(pattern) && !isPatternOutOfBounds(pattern)
+  return validatePatternSize(pattern) && validatePatternPosition(pattern)
 }
 
 const measure = (f: () => void): number => {
