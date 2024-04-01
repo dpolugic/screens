@@ -1,4 +1,4 @@
-import { AbsolutePattern, Boundaries, Pattern, Point, Size } from './types'
+import { AbsolutePattern, Boundaries, Pattern, Point, Size, State } from './types'
 
 const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundaries => {
   const xMin = Math.min(x1, x2)
@@ -131,8 +131,7 @@ const findClickedPattern = (
 // }
 
 export const findClickedScreenOrPattern = (
-  screens: AbsolutePattern[],
-  patterns: Pattern[],
+  { screens, patterns }: State,
   point: Point
 ): ClickedPath | undefined => {
   // we'll search a few levels only

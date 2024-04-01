@@ -9,7 +9,7 @@ import {
   getMousePoint,
   getRelativePatternPosition,
 } from './functions'
-import { AbsolutePattern, Pattern, Point, asAbsolutePattern } from './types'
+import { AbsolutePattern, Pattern, Point, State, asAbsolutePattern } from './types'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
@@ -19,33 +19,32 @@ const StyledCanvas = styled.canvas`
 `
 
 const getDraftState = (
-  screens: AbsolutePattern[],
-  patterns: Pattern[],
+  state: State,
   clickedPath: ClickedPath | undefined,
   draftPattern: AbsolutePattern | undefined
 ): {
   screens: AbsolutePattern[]
   patterns: Pattern[]
 } => {
-  if (draftPattern === undefined) return { screens, patterns }
+  if (draftPattern === undefined) return state
 
   if (clickedPath === undefined) {
     // create top-level screen
-    return { screens: screens.concat(draftPattern), patterns }
+    return { ...state, screens: state.screens.concat(draftPattern) }
   }
 
   // if draft origin is inside existing screen, add a pattern instead
   const { screenIndex, nestedPath } = clickedPath
 
-  const outerScreenBoundaries = getBoundariesFromPattern(screens[screenIndex])
+  const outerScreenBoundaries = getBoundariesFromPattern(state.screens[screenIndex])
   let newDraft = getRelativePatternPosition(draftPattern, outerScreenBoundaries)
 
   for (const k of nestedPath) {
-    const boundaries = getBoundariesFromPattern(patterns[k])
+    const boundaries = getBoundariesFromPattern(state.patterns[k])
     newDraft = getRelativePatternPosition(newDraft, boundaries)
   }
 
-  return { screens, patterns: patterns.concat(newDraft) }
+  return { ...state, patterns: state.patterns.concat(newDraft) }
 }
 
 type DraftClick = {
@@ -53,12 +52,16 @@ type DraftClick = {
   clickedPath: ClickedPath | undefined
 }
 
+const BASE_STATE = {
+  screens: [],
+  patterns: [],
+}
+
 function App() {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
   const mousePositionRef = useRef<Point>([0, 0])
 
-  const [patterns, setPatterns] = useState<Pattern[]>([])
-  const [screens, setScreens] = useState<AbsolutePattern[]>([])
+  const [state, setState] = useState<State>(BASE_STATE)
   const [draftClick, setDraftClick] = useState<DraftClick | undefined>(undefined)
 
   const ctx = useMemo(() => canvasEl?.getContext('2d'), [canvasEl])
@@ -86,8 +89,7 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (keydownEvent: KeyboardEvent) => {
       if (keydownEvent.key === 'Escape') {
-        setScreens([])
-        setPatterns([])
+        setState(BASE_STATE)
       }
     }
 
@@ -108,8 +110,7 @@ function App() {
       if (cancelled) return
 
       const { screens: draftScreens, patterns: draftPatterns } = getDraftState(
-        screens,
-        patterns,
+        state,
         draftClick?.clickedPath,
         draftClick !== undefined
           ? asAbsolutePattern({
@@ -129,7 +130,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [ctx, draftClick, screens, patterns])
+  }, [ctx, draftClick, state])
 
   return (
     <StyledCanvas
@@ -142,7 +143,7 @@ function App() {
         // create draft screen based on current cursor position
         setDraftClick({
           anchor: mousePoint,
-          clickedPath: findClickedScreenOrPattern(screens, patterns, mousePoint),
+          clickedPath: findClickedScreenOrPattern(state, mousePoint),
         })
       }}
       onMouseUp={e => {
@@ -162,9 +163,8 @@ function App() {
         if (Math.abs(x2 - x1) < 0.01) return
         if (Math.abs(y2 - y1) < 0.01) return
 
-        const { screens: draftScreens, patterns: draftPatterns } = getDraftState(
-          screens,
-          patterns,
+        const newState = getDraftState(
+          state,
           draftClick.clickedPath,
           asAbsolutePattern({
             anchor: draftClick.anchor,
@@ -172,8 +172,7 @@ function App() {
           })
         )
 
-        setScreens(draftScreens)
-        setPatterns(draftPatterns)
+        setState(newState)
       }}
       onMouseMove={e => {
         if (!ctx) return

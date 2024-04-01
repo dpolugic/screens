@@ -21,3 +21,8 @@ export type Boundaries = {
   yMin: number
   yMax: number
 }
+
+export type State = {
+  screens: AbsolutePattern[]
+  patterns: Pattern[]
+}
