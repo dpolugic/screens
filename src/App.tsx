@@ -21,7 +21,7 @@ const StyledCanvas = styled.canvas`
 const getDraftState = (
   screens: AbsolutePattern[],
   patterns: Pattern[],
-  clickOriginResult: ClickedPath | undefined,
+  clickedPath: ClickedPath | undefined,
   draftPattern: AbsolutePattern | undefined
 ): {
   screens: AbsolutePattern[]
@@ -29,13 +29,13 @@ const getDraftState = (
 } => {
   if (draftPattern === undefined) return { screens, patterns }
 
-  if (clickOriginResult === undefined) {
+  if (clickedPath === undefined) {
     // create top-level screen
     return { screens: screens.concat(draftPattern), patterns }
   }
 
   // if draft origin is inside existing screen, add a pattern instead
-  const { screenIndex, nestedPath } = clickOriginResult
+  const { screenIndex, nestedPath } = clickedPath
 
   const outerScreenBoundaries = getBoundariesFromPattern(screens[screenIndex])
   let newDraft = getRelativePatternPosition(draftPattern, outerScreenBoundaries)
@@ -48,19 +48,18 @@ const getDraftState = (
   return { screens, patterns: patterns.concat(newDraft) }
 }
 
+type DraftClick = {
+  anchor: Point
+  clickedPath: ClickedPath | undefined
+}
+
 function App() {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
   const mousePositionRef = useRef<Point>([0, 0])
 
   const [patterns, setPatterns] = useState<Pattern[]>([])
   const [screens, setScreens] = useState<AbsolutePattern[]>([])
-  const [draftScreenOrigin, setDraftScreenOrigin] = useState<Point | undefined>(undefined)
-
-  const draftClickResult = useMemo(() => {
-    if (draftScreenOrigin === undefined) return undefined
-
-    return findClickedScreenOrPattern(screens, patterns, draftScreenOrigin)
-  }, [draftScreenOrigin, patterns, screens])
+  const [draftClick, setDraftClick] = useState<DraftClick | undefined>(undefined)
 
   const ctx = useMemo(() => canvasEl?.getContext('2d'), [canvasEl])
 
@@ -111,10 +110,10 @@ function App() {
       const { screens: draftScreens, patterns: draftPatterns } = getDraftState(
         screens,
         patterns,
-        draftClickResult,
-        draftScreenOrigin !== undefined
+        draftClick?.clickedPath,
+        draftClick !== undefined
           ? asAbsolutePattern({
-              anchor: draftScreenOrigin,
+              anchor: draftClick.anchor,
               target: mousePositionRef.current,
             })
           : undefined
@@ -130,7 +129,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [ctx, draftScreenOrigin, screens, patterns, draftClickResult])
+  }, [ctx, draftClick, screens, patterns])
 
   return (
     <StyledCanvas
@@ -141,18 +140,21 @@ function App() {
         const mousePoint = getMousePoint(ctx, e)
 
         // create draft screen based on current cursor position
-        setDraftScreenOrigin(mousePoint)
+        setDraftClick({
+          anchor: mousePoint,
+          clickedPath: findClickedScreenOrPattern(screens, patterns, mousePoint),
+        })
       }}
       onMouseUp={e => {
         if (!ctx) return
-        if (!draftScreenOrigin) return
+        if (!draftClick) return
 
         // reset origin. note: this is async so we can still use the value below.
-        setDraftScreenOrigin(undefined)
+        setDraftClick(undefined)
 
         const mousePoint = getMousePoint(ctx, e)
 
-        const [x1, y1] = draftScreenOrigin
+        const [x1, y1] = draftClick.anchor
         const [x2, y2] = mousePoint
 
         // validate size, ignore drawings that are too small (arbitrary)
@@ -163,9 +165,9 @@ function App() {
         const { screens: draftScreens, patterns: draftPatterns } = getDraftState(
           screens,
           patterns,
-          draftClickResult,
+          draftClick.clickedPath,
           asAbsolutePattern({
-            anchor: draftScreenOrigin,
+            anchor: draftClick.anchor,
             target: mousePositionRef.current,
           })
         )
