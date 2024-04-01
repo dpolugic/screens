@@ -18,6 +18,15 @@ const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundarie
   }
 }
 
+export const normalizePattern = (pattern: Pattern): Pattern => {
+  const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
+
+  return {
+    anchor: [xMin, yMin],
+    target: [xMax, yMax],
+  }
+}
+
 export const getBoundariesFromPattern = (pattern: Pattern): Boundaries => {
   return getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
 }
