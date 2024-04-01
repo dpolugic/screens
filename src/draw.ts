@@ -9,17 +9,25 @@ import { AbsolutePattern, Pattern, Point, Size, State } from './types'
 
 // -- constants
 
-const SIZE_LIMIT = 0.004
-
-// ...
+// todo: handle colors in a better way
 const COLORS = '0123456789abcdef'
   .split('')
   .reverse()
   .map(a => `#fa${a}`)
 
 const MIN_DEPTH = 3
-const MAX_DEPTH = Infinity // we'll rely on limiting draw calls instead
+// Rather than limiting the max depth, we'll limit the number of draw calls instead.
+const MAX_DEPTH = Infinity
 const MAX_DRAW_CALLS = 1e4
+const SIZE_LIMIT = 0.001
+const DEBUG = true as boolean
+
+// -- hacky global state
+
+type GlobalMutableState = {
+  drawScreenCalls: number
+  drawPatternCalls: number
+}
 
 // -- helper functions
 
@@ -57,17 +65,30 @@ const isPatternTooSmall = (pattern: AbsolutePattern): boolean => {
   return boundaries.xMax - boundaries.xMin < SIZE_LIMIT || boundaries.yMax - boundaries.yMin < SIZE_LIMIT
 }
 
-// ---
+const measure = (f: () => void): number => {
+  const start = performance.now()
 
-// hacky global state
-let drawCalls = 0
+  f()
+
+  return performance.now() - start
+}
+
+const shouldCancelEarly = (depth: number, globalMutableState: GlobalMutableState): boolean => {
+  if (depth > MAX_DEPTH) return true
+  if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= MAX_DRAW_CALLS) return true
+
+  return false
+}
+
+// ---
 
 const drawScreen = (
   ctx: CanvasRenderingContext2D,
   absolutePattern: AbsolutePattern,
-  strokeStyle: string
+  strokeStyle: string,
+  globalMutableState: GlobalMutableState
 ): void => {
-  drawCalls += 1
+  globalMutableState.drawScreenCalls += 1
 
   const viewportPattern = mapPatternToViewportSpace(absolutePattern, getScreenSize(ctx))
   const [p1, p2, p3, p4] = getPatternPoints(viewportPattern)
@@ -115,32 +136,49 @@ function* drawPattern(
   ctx: CanvasRenderingContext2D,
   absolutePattern: AbsolutePattern,
   patterns: Pattern[],
+  globalMutableState: GlobalMutableState,
   depth: number = 0
 ): Generator<void, void, void> {
-  if (depth > MAX_DEPTH) return
+  globalMutableState.drawPatternCalls += 1
+
   // Always render to MIN_DEPTH even if the draw call budget is empty
-  if (depth > MIN_DEPTH && drawCalls > MAX_DRAW_CALLS) return
+  if (shouldCancelEarly(depth, globalMutableState)) return
   if (isPatternOutOfBounds(absolutePattern)) return
   if (isPatternTooSmall(absolutePattern)) return
 
-  drawScreen(ctx, absolutePattern, COLORS[Math.min(COLORS.length - 1, depth)])
+  drawScreen(ctx, absolutePattern, COLORS[Math.min(COLORS.length - 1, depth)], globalMutableState)
   yield
+
+  // Don't bother handling the next level if we're just going to cancel early.
+  if (shouldCancelEarly(depth + 1, globalMutableState)) return
 
   const generators = patterns.map(pattern => {
     const virtualScreen = combinePatterns(absolutePattern, pattern)
-    return drawPattern(ctx, virtualScreen, patterns, depth + 1)
+    return drawPattern(ctx, virtualScreen, patterns, globalMutableState, depth + 1)
   })
 
   yield* runInParallel(generators)
 }
 
 export const drawFrame = (ctx: CanvasRenderingContext2D, state: State): void => {
-  drawCalls = 0
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+  const globalMutableState: GlobalMutableState = {
+    drawScreenCalls: 0,
+    drawPatternCalls: 0,
+  }
 
-  const generators = state.screens.map(screen => {
-    return drawPattern(ctx, screen, state.patterns)
+  const duration = measure(() => {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+
+    const generators = state.screens.map(screen => {
+      return drawPattern(ctx, screen, state.patterns, globalMutableState)
+    })
+
+    runUntilDone(runInParallel(generators))
   })
 
-  runUntilDone(runInParallel(generators))
+  if (DEBUG) {
+    console.log(
+      `drawFrame done in ${duration.toFixed(0)}ms. drawScreen calls: ${globalMutableState.drawScreenCalls}. drawPattern calls: ${globalMutableState.drawPatternCalls}`
+    )
+  }
 }
