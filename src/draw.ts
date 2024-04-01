@@ -17,9 +17,9 @@ const COLORS = '0123456789abcdef'
 
 const MIN_DEPTH = 3
 const MAX_DEPTH = Infinity
-const MAX_DRAW_CALLS = 1e4
+const MAX_DRAW_CALLS = 1e4 // number of shapes to draw per frame
 const MAX_QUEUE_SIZE = 1e6
-const MIN_PATTERN_SIZE = 0.0005
+const MIN_PATTERN_SIZE = 0.0005 // ignore patterns where either side is smaller than this
 const DEBUG = true as boolean
 
 // -- hacky global state
