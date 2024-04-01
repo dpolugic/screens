@@ -75,6 +75,7 @@ const measure = (f: () => void): number => {
 
 const shouldCancelEarly = (depth: number, globalMutableState: GlobalMutableState): boolean => {
   if (depth > MAX_DEPTH) return true
+  // Always render to MIN_DEPTH even if the draw call budget is empty
   if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= MAX_DRAW_CALLS) return true
 
   return false
@@ -141,7 +142,6 @@ function* drawPattern(
 ): Generator<void, void, void> {
   globalMutableState.drawPatternCalls += 1
 
-  // Always render to MIN_DEPTH even if the draw call budget is empty
   if (shouldCancelEarly(depth, globalMutableState)) return
   if (isPatternOutOfBounds(absolutePattern)) return
   if (isPatternTooSmall(absolutePattern)) return
