@@ -78,14 +78,6 @@ const measure = (f: () => void): number => {
   return performance.now() - start
 }
 
-const shouldCancelEarly = (depth: number, globalMutableState: GlobalMutableState): boolean => {
-  if (depth > MAX_DEPTH) return true
-  // Always render to MIN_DEPTH even if the draw call budget is empty
-  if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= MAX_DRAW_CALLS) return true
-
-  return false
-}
-
 // ---
 
 const drawScreen = (
@@ -128,7 +120,9 @@ const draw = (ctx: CanvasRenderingContext2D, state: State, globalMutableState: G
     globalMutableState.queueIterations += 1
     const { currentPattern, depth } = queue.shift()!
 
-    if (shouldCancelEarly(depth, globalMutableState)) break
+    if (depth > MAX_DEPTH) break
+    // Always render to MIN_DEPTH even if the draw call budget is empty
+    if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= MAX_DRAW_CALLS) break
 
     globalMutableState.drawScreenCalls += 1
     drawScreen(ctx, currentPattern, COLORS[Math.min(COLORS.length - 1, depth)])
