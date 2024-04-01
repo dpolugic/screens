@@ -100,6 +100,7 @@ function App() {
   useOnKeydown(event => {
     if (event.key === 'Escape') {
       setState(BASE_STATE)
+      setDraftClick(undefined)
     }
   })
 
