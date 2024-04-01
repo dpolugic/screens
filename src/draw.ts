@@ -26,7 +26,8 @@ const DEBUG = true as boolean
 
 type GlobalMutableState = {
   drawScreenCalls: number
-  drawPatternCalls: number
+  maxQueueSize: number
+  queueIterations: number
 }
 
 // -- helper functions
@@ -90,11 +91,8 @@ const shouldCancelEarly = (depth: number, globalMutableState: GlobalMutableState
 const drawScreen = (
   ctx: CanvasRenderingContext2D,
   absolutePattern: AbsolutePattern,
-  strokeStyle: string,
-  globalMutableState: GlobalMutableState
+  strokeStyle: string
 ): void => {
-  globalMutableState.drawScreenCalls += 1
-
   const viewportPattern = mapPatternToViewportSpace(absolutePattern, getScreenSize(ctx))
   const [p1, p2, p3, p4] = getPatternPoints(viewportPattern)
 
@@ -113,79 +111,57 @@ const drawScreen = (
   ctx.stroke()
 }
 
-// Move each generator forward one step and then yield.
-function* runInParallel(generators: Generator<void, void, void>[]) {
-  let res
-  let allDone = true
+type QueueEntry = {
+  currentPattern: AbsolutePattern
+  depth: number
+}
 
-  for (;;) {
-    allDone = true
-    for (const g of generators) {
-      res = g.next()
-      allDone &&= !!res.done
+const draw = (ctx: CanvasRenderingContext2D, state: State, globalMutableState: GlobalMutableState): void => {
+  const queue: QueueEntry[] = state.screens.map(screen => ({
+    currentPattern: screen,
+    depth: 0,
+  }))
+
+  globalMutableState.maxQueueSize = queue.length
+
+  while (queue.length > 0) {
+    globalMutableState.queueIterations += 1
+    const { currentPattern, depth } = queue.shift()!
+
+    if (shouldCancelEarly(depth, globalMutableState)) break
+
+    globalMutableState.drawScreenCalls += 1
+    drawScreen(ctx, currentPattern, COLORS[Math.min(COLORS.length - 1, depth)])
+
+    for (const pattern of state.patterns) {
+      const virtualScreen = combinePatterns(currentPattern, pattern)
+
+      if (isValidPattern(virtualScreen)) {
+        queue.push({
+          currentPattern: virtualScreen,
+          depth: depth + 1,
+        })
+      }
     }
-    if (allDone) break
-    yield
+
+    globalMutableState.maxQueueSize = Math.max(globalMutableState.maxQueueSize, queue.length)
   }
-}
-
-// Run generator until exhausted as if it was a regular function.
-function runUntilDone(generator: Generator<void, void, void>): void {
-  let res
-  do {
-    res = generator.next()
-  } while (!res.done)
-}
-
-function* drawPattern(
-  ctx: CanvasRenderingContext2D,
-  validatedPattern: AbsolutePattern,
-  patterns: Pattern[],
-  globalMutableState: GlobalMutableState,
-  depth: number = 0
-): Generator<void, void, void> {
-  globalMutableState.drawPatternCalls += 1
-
-  if (shouldCancelEarly(depth, globalMutableState)) return
-
-  drawScreen(ctx, validatedPattern, COLORS[Math.min(COLORS.length - 1, depth)], globalMutableState)
-  yield
-
-  // Don't bother handling the next level if we're just going to cancel early.
-  if (shouldCancelEarly(depth + 1, globalMutableState)) return
-
-  const generators = patterns.flatMap(pattern => {
-    const virtualScreen = combinePatterns(validatedPattern, pattern)
-
-    return isValidPattern(virtualScreen)
-      ? drawPattern(ctx, virtualScreen, patterns, globalMutableState, depth + 1)
-      : []
-  })
-
-  if (generators.length === 0) return
-
-  yield* runInParallel(generators)
 }
 
 export const drawFrame = (ctx: CanvasRenderingContext2D, state: State): void => {
   const globalMutableState: GlobalMutableState = {
     drawScreenCalls: 0,
-    drawPatternCalls: 0,
+    maxQueueSize: 0,
+    queueIterations: 0,
   }
 
   const duration = measure(() => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-    const generators = state.screens.flatMap(screen => {
-      return isValidPattern(screen) ? [drawPattern(ctx, screen, state.patterns, globalMutableState)] : []
-    })
-
-    runUntilDone(runInParallel(generators))
+    draw(ctx, state, globalMutableState)
   })
 
   if (DEBUG) {
-    console.log(
-      `drawFrame done in ${duration.toFixed(0)}ms. drawScreen calls: ${globalMutableState.drawScreenCalls}. drawPattern calls: ${globalMutableState.drawPatternCalls}`
-    )
+    console.log(`drawFrame done in ${duration.toFixed(0)}ms. ${JSON.stringify(globalMutableState)}`)
   }
 }
