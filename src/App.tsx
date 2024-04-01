@@ -9,7 +9,7 @@ import {
   getMousePoint,
   getRelativePatternPosition,
 } from './functions'
-import { Pattern, Point } from './types'
+import { AbsolutePattern, Pattern, Point, asAbsolutePattern } from './types'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
@@ -19,17 +19,12 @@ const StyledCanvas = styled.canvas`
 `
 
 const getDraftState = (
-  screens: Pattern[],
+  screens: AbsolutePattern[],
   patterns: Pattern[],
   clickOriginResult: ClickedPath | undefined,
-  draftPattern:
-    | {
-        anchor: Point
-        target: Point
-      }
-    | undefined
+  draftPattern: AbsolutePattern | undefined
 ): {
-  screens: Pattern[]
+  screens: AbsolutePattern[]
   patterns: Pattern[]
 } => {
   if (draftPattern === undefined) return { screens, patterns }
@@ -58,7 +53,7 @@ function App() {
   const mousePositionRef = useRef<Point>([0, 0])
 
   const [patterns, setPatterns] = useState<Pattern[]>([])
-  const [screens, setScreens] = useState<Pattern[]>([])
+  const [screens, setScreens] = useState<AbsolutePattern[]>([])
   const [draftScreenOrigin, setDraftScreenOrigin] = useState<Point | undefined>(undefined)
 
   const draftClickResult = useMemo(() => {
@@ -118,10 +113,10 @@ function App() {
         patterns,
         draftClickResult,
         draftScreenOrigin !== undefined
-          ? {
+          ? ({
               anchor: draftScreenOrigin,
               target: mousePositionRef.current,
-            }
+            } as AbsolutePattern)
           : undefined
       )
 
@@ -169,10 +164,10 @@ function App() {
           screens,
           patterns,
           draftClickResult,
-          {
+          asAbsolutePattern({
             anchor: draftScreenOrigin,
             target: mousePositionRef.current,
-          }
+          })
         )
 
         setScreens(draftScreens)

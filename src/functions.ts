@@ -1,4 +1,4 @@
-import { Boundaries, Pattern, Point, Size } from './types'
+import { AbsolutePattern, Boundaries, Pattern, Point, Size } from './types'
 
 const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundaries => {
   const xMin = Math.min(x1, x2)
@@ -71,7 +71,9 @@ export const getMousePoint = (
   return mapPointFromViewportSpace([mouseEvent.clientX, mouseEvent.clientY], screenSize)
 }
 
-export const combinePatterns = (parent: Pattern, child: Pattern): Pattern => {
+export function combinePatterns(parent: AbsolutePattern, child: Pattern): AbsolutePattern
+export function combinePatterns(parent: Pattern, child: Pattern): Pattern
+export function combinePatterns(parent: Pattern, child: Pattern): Pattern {
   const parentBoundaries = getBoundariesFromPattern(parent)
 
   return {
@@ -128,7 +130,7 @@ const findClickedPattern = (
 // }
 
 export const findClickedScreenOrPattern = (
-  screens: Pattern[],
+  screens: AbsolutePattern[],
   patterns: Pattern[],
   point: Point
 ): ClickedPath | undefined => {
