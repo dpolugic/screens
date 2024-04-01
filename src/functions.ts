@@ -34,6 +34,10 @@ export const pointIsInBoundaries = (point: Point, boundaries: Boundaries): boole
   return xMin <= pointX && pointX <= xMax && yMin <= pointY && pointY <= yMax
 }
 
+const pointIsInPattern = (point: AbsolutePoint, pattern: AbsolutePattern): boolean => {
+  return pointIsInBoundaries(point, getBoundariesFromPattern(pattern))
+}
+
 export const mapPointToViewportSpace = (
   [x, y]: AbsolutePoint,
   [viewportWidth, viewportHeight]: Size
@@ -116,9 +120,7 @@ const findClickedPattern = (
   let best: NestedPath | undefined = undefined
 
   for (let i = 0; i < patterns.length; i++) {
-    const pattern = patterns[i]
-    const newBasePattern = combinePatterns(previousBasePattern, pattern)
-    const newBoundaries = getBoundariesFromPattern(newBasePattern)
+    const newBasePattern = combinePatterns(previousBasePattern, patterns[i])
     const newPath = path.concat(i)
 
     const nestedResult = findClickedPattern(newBasePattern, patterns, point, newPath)
@@ -127,11 +129,9 @@ const findClickedPattern = (
       if (best === undefined || nestedResult.length > best.length) {
         best = nestedResult
       }
-    } else if (pointIsInBoundaries(point, newBoundaries)) {
+    } else if (best === undefined && pointIsInPattern(point, newBasePattern)) {
       // only check current depth if there's no nested result
-      if (best === undefined || path.length > best.length) {
-        best = newPath
-      }
+      best = newPath
     }
   }
 
