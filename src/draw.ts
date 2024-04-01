@@ -119,11 +119,10 @@ function* drawPattern(
   drawScreen(ctx, absolutePattern, COLORS[Math.min(COLORS.length - 1, depth)])
   yield
 
-  const generators = []
-  for (const pattern of patterns) {
+  const generators = patterns.map(pattern => {
     const virtualScreen = combinePatterns(absolutePattern, pattern)
-    generators.push(drawPattern(ctx, virtualScreen, patterns, depth + 1))
-  }
+    return drawPattern(ctx, virtualScreen, patterns, depth + 1)
+  })
 
   yield* runInParallel(generators)
 }
@@ -132,10 +131,9 @@ export const drawFrame = (ctx: CanvasRenderingContext2D, state: State): void => 
   drawCalls = 0
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-  const generators = []
-  for (const screen of state.screens) {
-    generators.push(drawPattern(ctx, screen, state.patterns))
-  }
+  const generators = state.screens.map(screen => {
+    return drawPattern(ctx, screen, state.patterns)
+  })
 
   runUntilDone(runInParallel(generators))
 }
