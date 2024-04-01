@@ -5,7 +5,6 @@ import { drawFrame } from './draw'
 import {
   ClickedPath,
   findClickedScreenOrPattern,
-  getBoundariesFromPattern,
   getMousePoint,
   getRelativePatternPosition,
 } from './functions'
@@ -38,12 +37,9 @@ const getDraftState = (
   // if draft origin is inside existing screen, add a pattern instead
   const { screenIndex, nestedPath } = draftClick.clickedPath
 
-  const outerScreenBoundaries = getBoundariesFromPattern(state.screens[screenIndex])
-  let newDraft = getRelativePatternPosition(draftPattern, outerScreenBoundaries)
-
+  let newDraft = getRelativePatternPosition(draftPattern, state.screens[screenIndex])
   for (const k of nestedPath) {
-    const boundaries = getBoundariesFromPattern(state.patterns[k])
-    newDraft = getRelativePatternPosition(newDraft, boundaries)
+    newDraft = getRelativePatternPosition(newDraft, state.patterns[k])
   }
 
   return { ...state, patterns: state.patterns.concat(newDraft) }

@@ -49,31 +49,31 @@ export const mapPointFromViewportSpace = (
   return asAbsolutePoint([x / viewportWidth, y / viewportHeight])
 }
 
-// ts-unused-exports:disable-next-line
-export const getRelativePointPosition = (point: Point, boundaries: Boundaries): Point => {
-  const { xMin, xMax, yMin, yMax } = boundaries
+const getRelativePointPosition = (point: Point, pattern: Pattern): Point => {
+  const [x1, y1] = pattern.anchor
+  const [x2, y2] = pattern.target
   const [x, y] = point
 
-  const relativeX = (x - xMin) / (xMax - xMin)
-  const relativeY = (y - yMin) / (yMax - yMin)
+  const relativeX = (x - x1) / (x2 - x1)
+  const relativeY = (y - y1) / (y2 - y1)
 
   return [relativeX, relativeY]
 }
 
-export const getRelativePatternPosition = (pattern: Pattern, boundaries: Boundaries): Pattern => {
+export const getRelativePatternPosition = (pattern: Pattern, basePattern: Pattern): Pattern => {
   return {
-    anchor: getRelativePointPosition(pattern.anchor, boundaries),
-    target: getRelativePointPosition(pattern.target, boundaries),
+    anchor: getRelativePointPosition(pattern.anchor, basePattern),
+    target: getRelativePointPosition(pattern.target, basePattern),
   }
 }
 
-// ts-unused-exports:disable-next-line
-export const resolveRelativePointPosition = (relativePoint: Point, boundaries: Boundaries): Point => {
-  const { xMin, xMax, yMin, yMax } = boundaries
+const resolveRelativePointPosition = (relativePoint: Point, pattern: Pattern): Point => {
+  const [x1, y1] = pattern.anchor
+  const [x2, y2] = pattern.target
   const [x, y] = relativePoint
 
-  const resolvedX = xMin + x * (xMax - xMin)
-  const resolvedY = yMin + y * (yMax - yMin)
+  const resolvedX = x1 + x * (x2 - x1)
+  const resolvedY = y1 + y * (y2 - y1)
 
   return [resolvedX, resolvedY]
 }
@@ -90,11 +90,9 @@ export const getMousePoint = (
 export function combinePatterns(parent: AbsolutePattern, child: Pattern): AbsolutePattern
 export function combinePatterns(parent: Pattern, child: Pattern): Pattern
 export function combinePatterns(parent: Pattern, child: Pattern): Pattern {
-  const parentBoundaries = getBoundariesFromPattern(parent)
-
   return {
-    anchor: resolveRelativePointPosition(child.anchor, parentBoundaries),
-    target: resolveRelativePointPosition(child.target, parentBoundaries),
+    anchor: resolveRelativePointPosition(child.anchor, parent),
+    target: resolveRelativePointPosition(child.target, parent),
   }
 }
 
