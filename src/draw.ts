@@ -7,6 +7,22 @@ import {
 } from './functions'
 import { AbsolutePattern, Pattern, Point, Size, State } from './types'
 
+// -- constants
+
+const SIZE_LIMIT = 0.004
+
+// ...
+const COLORS = '0123456789abcdef'
+  .split('')
+  .reverse()
+  .map(a => `#fa${a}`)
+
+const MIN_DEPTH = 3
+const MAX_DEPTH = Infinity // we'll rely on limiting draw calls instead
+const MAX_DRAW_CALLS = 1e4
+
+// -- helper functions
+
 const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): Pattern => ({
   anchor: mapPointToViewportSpace(pattern.anchor, screenSize),
   target: mapPointToViewportSpace(pattern.target, screenSize),
@@ -38,8 +54,10 @@ const isPatternOutOfBounds = (pattern: AbsolutePattern): boolean => {
 
 const isPatternTooSmall = (pattern: AbsolutePattern): boolean => {
   const boundaries = getBoundariesFromPattern(pattern)
-  return boundaries.xMax - boundaries.xMin < 0.001 || boundaries.yMax - boundaries.yMin < 0.001
+  return boundaries.xMax - boundaries.xMin < SIZE_LIMIT || boundaries.yMax - boundaries.yMin < SIZE_LIMIT
 }
+
+// ---
 
 // hacky global state
 let drawCalls = 0
@@ -67,24 +85,6 @@ const drawScreen = (
 
   ctx.fill()
   ctx.stroke()
-}
-
-// ...
-const COLORS = '0123456789abcdef'
-  .split('')
-  .reverse()
-  .map(a => `#fa${a}`)
-
-const MIN_DEPTH = 3
-const MAX_DEPTH = Infinity // we'll rely on limiting draw calls instead
-const MAX_DRAW_CALLS = 1e4
-
-const shouldCancel = (depth: number): boolean => {
-  // Always render to MIN_DEPTH even if the draw call budget is empty
-  if (depth < MIN_DEPTH) return false
-  if (depth > MAX_DEPTH) return true
-
-  return drawCalls > MAX_DRAW_CALLS
 }
 
 // Move each generator forward one step and then yield.
@@ -117,7 +117,9 @@ function* drawPattern(
   patterns: Pattern[],
   depth: number = 0
 ): Generator<void, void, void> {
-  if (shouldCancel(depth)) return
+  if (depth > MAX_DEPTH) return
+  // Always render to MIN_DEPTH even if the draw call budget is empty
+  if (depth > MIN_DEPTH && drawCalls > MAX_DRAW_CALLS) return
   if (isPatternOutOfBounds(absolutePattern)) return
   if (isPatternTooSmall(absolutePattern)) return
 
