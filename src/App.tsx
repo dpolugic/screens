@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import styled from 'styled-components'
-import { RenderOptions, drawFrame } from './draw'
+import { DrawFrameResult, RenderOptions, drawFrame } from './draw'
 import {
   ClickedPath,
   findClickedScreenOrPattern,
@@ -104,10 +104,10 @@ function App() {
     }
   })
 
-  const render = useStableFunction((renderState: State, renderOptions: RenderOptions) => {
-    if (!ctx) return
+  const render = useStableFunction((renderState: State, renderOptions: RenderOptions): DrawFrameResult => {
+    if (!ctx) return { done: false }
 
-    drawFrame(ctx, renderState, renderOptions)
+    return drawFrame(ctx, renderState, renderOptions)
   })
 
   useEffect(() => {
@@ -116,14 +116,19 @@ function App() {
     let cancelled = false
     const renderLoop = () => {
       if (cancelled) return
-      render(state, { reset: false })
 
-      requestAnimationFrame(renderLoop)
+      const res = render(state, { reset: false })
+
+      if (!res.done) {
+        requestAnimationFrame(renderLoop)
+      }
     }
 
-    render(state, { reset: true })
+    const res = render(state, { reset: true })
 
-    requestAnimationFrame(renderLoop)
+    if (!res.done) {
+      requestAnimationFrame(renderLoop)
+    }
 
     return () => {
       cancelled = true

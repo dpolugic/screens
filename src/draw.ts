@@ -145,7 +145,13 @@ const draw = (
 
 let cachedQueue: QueueEntry[] = []
 
-export const drawFrame = (ctx: CanvasRenderingContext2D, state: State, options: RenderOptions): void => {
+export type DrawFrameResult = { done: boolean }
+
+export const drawFrame = (
+  ctx: CanvasRenderingContext2D,
+  state: State,
+  options: RenderOptions
+): DrawFrameResult => {
   const globalMutableState: GlobalMutableState = {
     drawScreenCalls: 0,
     maxQueueSize: 0,
@@ -169,5 +175,9 @@ export const drawFrame = (ctx: CanvasRenderingContext2D, state: State, options: 
 
   if (DEBUG) {
     console.log(`drawFrame done in ${duration.toFixed(0)}ms. ${JSON.stringify(globalMutableState)}`)
+  }
+
+  return {
+    done: cachedQueue.length === 0,
   }
 }
