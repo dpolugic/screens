@@ -161,7 +161,7 @@ export const findClickedScreenOrPattern = (
           nestedPath: clickedPath,
         }
       }
-    } else if (pointIsInBoundaries(point, getBoundariesFromPattern(screens[i]))) {
+    } else if (pointIsInPattern(point, screens[i])) {
       // only check current depth if there's no nested result
       if (best === undefined) {
         best = {
