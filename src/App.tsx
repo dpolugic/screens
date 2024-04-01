@@ -9,7 +9,7 @@ import {
   getMousePoint,
   getRelativePatternPosition,
 } from './functions'
-import { Point, State, asAbsolutePattern } from './types'
+import { AbsolutePoint, State, asAbsolutePoint } from './types'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
@@ -18,13 +18,17 @@ const StyledCanvas = styled.canvas`
   height: 100%;
 `
 
-const getDraftState = (state: State, draftClick: DraftClick | undefined, mousePosition: Point): State => {
+const getDraftState = (
+  state: State,
+  draftClick: DraftClick | undefined,
+  mousePosition: AbsolutePoint
+): State => {
   if (draftClick === undefined) return state
 
-  const draftPattern = asAbsolutePattern({
+  const draftPattern = {
     anchor: draftClick.anchor,
     target: mousePosition,
-  })
+  }
 
   if (draftClick.clickedPath === undefined) {
     // create top-level screen
@@ -46,9 +50,11 @@ const getDraftState = (state: State, draftClick: DraftClick | undefined, mousePo
 }
 
 type DraftClick = {
-  anchor: Point
+  anchor: AbsolutePoint
   clickedPath: ClickedPath | undefined
 }
+
+const BASE_MOUSE_POSITION = asAbsolutePoint([0, 0])
 
 const BASE_STATE = {
   screens: [],
@@ -57,7 +63,7 @@ const BASE_STATE = {
 
 function App() {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
-  const mousePositionRef = useRef<Point>([0, 0])
+  const mousePositionRef = useRef<AbsolutePoint>(BASE_MOUSE_POSITION)
 
   const [state, setState] = useState<State>(BASE_STATE)
   const [draftClick, setDraftClick] = useState<DraftClick | undefined>(undefined)

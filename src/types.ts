@@ -1,17 +1,23 @@
+type Brand<T> = T & { readonly __brand: unique symbol }
+
 export type Point = [x: number, y: number]
+
+export type AbsolutePoint = Brand<Point>
+
+export const asAbsolutePoint = (point: Point): AbsolutePoint => point as AbsolutePoint
 
 export type Size = [width: number, height: number]
 
-export type Pattern = {
-  anchor: Point // relative point representing base of new screen.
-  target: Point // relative point representing other corner of new screen. can have negative coordinates.
+export type Pattern<P extends Point = Point> = {
+  anchor: P // relative point representing base of new screen.
+  target: P // relative point representing other corner of new screen. can have negative coordinates.
 }
 
-// reprents a pattern in relative coordinates.
-export type RelativePattern = Pattern & { readonly __brand: unique symbol }
+// represents a pattern in relative coordinates.
+export type RelativePattern = Brand<Pattern>
 
 // represents a pattern in absolute coordinates.
-export type AbsolutePattern = Pattern & { readonly __brand: unique symbol }
+export type AbsolutePattern = Pattern<AbsolutePoint>
 
 export const asAbsolutePattern = (pattern: Pattern): AbsolutePattern => pattern as AbsolutePattern
 

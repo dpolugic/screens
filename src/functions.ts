@@ -1,4 +1,13 @@
-import { AbsolutePattern, Boundaries, Pattern, Point, Size, State } from './types'
+import {
+  AbsolutePattern,
+  AbsolutePoint,
+  Boundaries,
+  Pattern,
+  Point,
+  Size,
+  State,
+  asAbsolutePoint,
+} from './types'
 
 const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundaries => {
   const xMin = Math.min(x1, x2)
@@ -25,13 +34,19 @@ export const pointIsInBoundaries = (point: Point, boundaries: Boundaries): boole
   return xMin <= pointX && pointX <= xMax && yMin <= pointY && pointY <= yMax
 }
 
-export const mapPointToViewportSpace = ([x, y]: Point, [viewportWidth, viewportHeight]: Size): Point => {
+export const mapPointToViewportSpace = (
+  [x, y]: AbsolutePoint,
+  [viewportWidth, viewportHeight]: Size
+): Point => {
   return [x * viewportWidth, y * viewportHeight]
 }
 
 // ts-unused-exports:disable-next-line
-export const mapPointFromViewportSpace = ([x, y]: Point, [viewportWidth, viewportHeight]: Size): Point => {
-  return [x / viewportWidth, y / viewportHeight]
+export const mapPointFromViewportSpace = (
+  [x, y]: Point,
+  [viewportWidth, viewportHeight]: Size
+): AbsolutePoint => {
+  return asAbsolutePoint([x / viewportWidth, y / viewportHeight])
 }
 
 // ts-unused-exports:disable-next-line
@@ -68,7 +83,7 @@ export const getScreenSize = (ctx: CanvasRenderingContext2D): Size => [ctx.canva
 export const getMousePoint = (
   ctx: CanvasRenderingContext2D,
   mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>
-) => {
+): AbsolutePoint => {
   return mapPointFromViewportSpace([mouseEvent.clientX, mouseEvent.clientY], getScreenSize(ctx))
 }
 
@@ -93,9 +108,9 @@ export type ClickedPath = {
 const MAX_DEPTH = 4
 
 const findClickedPattern = (
-  previousBasePattern: Pattern,
+  previousBasePattern: AbsolutePattern,
   patterns: Pattern[],
-  point: Point, // point is relative to previous base pattern
+  point: AbsolutePoint,
   path: number[] = []
 ): NestedPath | undefined => {
   if (path.length > MAX_DEPTH) return undefined
@@ -132,7 +147,7 @@ const findClickedPattern = (
 
 export const findClickedScreenOrPattern = (
   { screens, patterns }: State,
-  point: Point
+  point: AbsolutePoint
 ): ClickedPath | undefined => {
   // we'll search a few levels only
   // we're interested in the deepest level that contains the point, since that is rendered on top.

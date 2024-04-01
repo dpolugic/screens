@@ -7,7 +7,7 @@ import {
 } from './functions'
 import { AbsolutePattern, Pattern, Point, Size, State } from './types'
 
-const mapPatternToViewportSpace = (pattern: Pattern, screenSize: Size): Pattern => ({
+const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): Pattern => ({
   anchor: mapPointToViewportSpace(pattern.anchor, screenSize),
   target: mapPointToViewportSpace(pattern.target, screenSize),
 })
