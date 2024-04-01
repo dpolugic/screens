@@ -152,7 +152,7 @@ function App() {
         if (Math.abs(x2 - x1) < 0.01) return
         if (Math.abs(y2 - y1) < 0.01) return
 
-        setState(prevState => getDraftState(prevState, draftClick, mousePositionRef.current))
+        setState(prevState => getDraftState(prevState, draftClick, mousePoint))
       }}
       onMouseMove={e => {
         if (!ctx) return
