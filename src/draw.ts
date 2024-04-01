@@ -103,10 +103,6 @@ const drawScreen = (
   ctx.stroke()
 }
 
-export type RenderOptions = {
-  reset: boolean
-}
-
 type QueueEntry = {
   currentPattern: AbsolutePattern
   depth: number
@@ -144,48 +140,47 @@ const draw = (
   }
 }
 
-let drawQueue: QueueEntry[] = []
-
-export type DrawFrameResult = { done: boolean }
-
-export const drawFrame = (
+export function* drawFrameIncrementally(
   ctx: CanvasRenderingContext2D,
-  state: State,
-  options: RenderOptions
-): DrawFrameResult => {
-  const globalMutableState: GlobalMutableState = {
-    drawScreenCalls: 0,
-    maxQueueSize: 0,
-    queueIterations: 0,
-  }
+  state: State
+): Generator<void, void, void> {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-  if (options.reset) {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-    drawQueue = state.screens.map(screen => ({
-      currentPattern: screen,
-      depth: 0,
-    }))
-    globalMutableState.maxQueueSize = drawQueue.length
-  }
+  const drawQueue = state.screens.map(screen => ({
+    currentPattern: screen,
+    depth: 0,
+  }))
 
-  const duration = measure(() => {
-    draw(ctx, state, globalMutableState, drawQueue)
-  })
+  while (drawQueue.length > 0) {
+    const globalMutableState: GlobalMutableState = {
+      drawScreenCalls: 0,
+      maxQueueSize: drawQueue.length,
+      queueIterations: 0,
+    }
 
-  if (DEBUG) {
-    console.log(
-      `drawFrame done in ${duration.toFixed(0)}ms. Queue size: ${drawQueue.length}. ${JSON.stringify(globalMutableState)}.`
-    )
-  }
+    const duration = measure(() => {
+      draw(ctx, state, globalMutableState, drawQueue)
+    })
 
-  // Give up if queue becomes too large.
-  if (drawQueue.length > MAX_QUEUE_SIZE) {
-    console.warn('Maximum queue size reached. Rendering cancelled.')
-    drawQueue = []
-    return { done: true }
-  }
+    if (DEBUG) {
+      console.log(
+        `drawFrame done in ${duration.toFixed(0)}ms. Queue size: ${drawQueue.length}. ${JSON.stringify(globalMutableState)}.`
+      )
+    }
 
-  return {
-    done: drawQueue.length === 0,
+    // Give up if queue becomes too large.
+    if (drawQueue.length > MAX_QUEUE_SIZE) {
+      console.warn('Maximum queue size reached. Rendering cancelled.')
+      return
+    }
+
+    yield
   }
+}
+
+export function drawFramePreview(ctx: CanvasRenderingContext2D, state: State): void {
+  const generator = drawFrameIncrementally(ctx, state)
+
+  generator.next()
+  generator.return()
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 
 import styled from 'styled-components'
-import { DrawFrameResult, RenderOptions, drawFrame } from './draw'
+import { drawFrameIncrementally, drawFramePreview } from './draw'
 import {
   ClickedPath,
   findClickedScreenOrPattern,
@@ -106,35 +106,48 @@ function App() {
     }
   })
 
-  const render = useStableFunction((renderState: State, renderOptions: RenderOptions): DrawFrameResult => {
-    if (!ctx) return { done: false }
-
-    return drawFrame(ctx, renderState, renderOptions)
-  })
-
   useEffect(() => {
-    // The preview is rendered elsewhere, don't do it here.
-    if (draftClick !== undefined) return
+    if (!ctx) return
 
-    let cancelled = false
-    const renderLoop = () => {
-      if (cancelled) return
+    if (draftClick !== undefined) {
+      // Render preview
 
-      const res = render(state, { reset: false })
-      if (!res.done) {
+      let cancelled = false
+      const renderLoop = () => {
+        if (cancelled) return
+        const draftState = getDraftState(state, draftClick, mousePositionRef.current)
+
+        drawFramePreview(ctx, draftState)
+
         requestAnimationFrame(renderLoop)
       }
-    }
 
-    const res = render(state, { reset: true })
-    if (!res.done) {
-      requestAnimationFrame(renderLoop)
-    }
+      renderLoop()
 
-    return () => {
-      cancelled = true
+      return () => {
+        cancelled = true
+      }
+    } else {
+      const generator = drawFrameIncrementally(ctx, state)
+
+      let cancelled = false
+      const renderLoop = () => {
+        if (cancelled) return
+
+        const res = generator.next()
+        if (!res.done) {
+          requestAnimationFrame(renderLoop)
+        }
+      }
+
+      renderLoop()
+
+      return () => {
+        cancelled = true
+        generator.return()
+      }
     }
-  }, [draftClick, render, state, resizeCount])
+  }, [draftClick, state, resizeCount, ctx])
 
   return (
     <StyledCanvas
@@ -173,12 +186,6 @@ function App() {
         if (!ctx) return
 
         mousePositionRef.current = getMousePoint(ctx, e)
-
-        if (draftClick !== undefined) {
-          const draftState = getDraftState(state, draftClick, mousePositionRef.current)
-
-          render(draftState, { reset: true })
-        }
       }}
     />
   )
