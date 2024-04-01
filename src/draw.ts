@@ -82,13 +82,13 @@ const shouldCancel = (depth: number): boolean => {
   return drawCalls > MAX_DRAW_CALLS
 }
 
+// Move each generator forward one step and then yield.
 function* runInParallel(generators: Generator<void, void, void>[], isDone: () => boolean) {
   while (!isDone()) {
-    let allDone = true
+    let allDone: boolean | undefined = true
     for (const g of generators) {
       const res = g.next()
-      const done = res.done === true
-      allDone &&= done
+      allDone &&= res.done
     }
     if (allDone) break
 
@@ -96,23 +96,24 @@ function* runInParallel(generators: Generator<void, void, void>[], isDone: () =>
   }
 }
 
+// Run generator until exhausted, as if it was a regular function.
 function runUntilDone(generator: Generator<void, void, void>): void {
   let res
   do {
     res = generator.next()
-  } while (res.done !== true)
+  } while (!res.done)
 }
 
 function* drawPattern(
   ctx: CanvasRenderingContext2D,
   absolutePattern: AbsolutePattern,
-  originalPatterns: Pattern[],
-  pattern: Pattern,
+  allPatterns: Pattern[],
+  currentPattern: Pattern,
   depth: number = 1
 ): Generator<void, void, void> {
   if (shouldCancel(depth)) return
 
-  const virtualScreen = combinePatterns(absolutePattern, pattern)
+  const virtualScreen = combinePatterns(absolutePattern, currentPattern)
 
   if (isPatternOutOfBounds(virtualScreen)) return
 
@@ -124,8 +125,8 @@ function* drawPattern(
   yield
 
   const generators = []
-  for (const originalPattern of originalPatterns) {
-    generators.push(drawPattern(ctx, virtualScreen, originalPatterns, originalPattern, depth + 1))
+  for (const originalPattern of allPatterns) {
+    generators.push(drawPattern(ctx, virtualScreen, allPatterns, originalPattern, depth + 1))
   }
 
   yield* runInParallel(generators, () => drawCalls > MAX_DRAW_CALLS)
@@ -139,11 +140,12 @@ export const drawFrame = (
   drawCalls = 0
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
+  // Draw top level screens
   for (const screen of screens) {
     drawScreen(ctx, screen, COLORS[0])
   }
 
-  // Draw virtual screens
+  // Draw nested screens
   const generators = []
   for (const screen of screens) {
     for (const pattern of patterns) {
