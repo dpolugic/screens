@@ -8,6 +8,7 @@ import {
   getMousePoint,
   getRelativePatternPosition,
 } from './functions'
+import { useStableFunction } from './hooks'
 import { AbsolutePoint, State, asAbsolutePoint } from './types'
 
 const StyledCanvas = styled.canvas`
@@ -17,13 +18,7 @@ const StyledCanvas = styled.canvas`
   height: 100%;
 `
 
-const getDraftState = (
-  state: State,
-  draftClick: DraftClick | undefined,
-  mousePosition: AbsolutePoint
-): State => {
-  if (draftClick === undefined) return state
-
+const getDraftState = (state: State, draftClick: DraftClick, mousePosition: AbsolutePoint): State => {
   const draftPattern = {
     anchor: draftClick.anchor,
     target: mousePosition,
@@ -50,23 +45,7 @@ type DraftClick = {
   clickedPath: ClickedPath | undefined
 }
 
-const BASE_MOUSE_POSITION = asAbsolutePoint([0, 0])
-
-const BASE_STATE = {
-  screens: [],
-  patterns: [],
-}
-
-function App() {
-  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
-  const mousePositionRef = useRef<AbsolutePoint>(BASE_MOUSE_POSITION)
-
-  const [state, setState] = useState<State>(BASE_STATE)
-  const [draftClick, setDraftClick] = useState<DraftClick | undefined>(undefined)
-
-  const ctx = useMemo(() => canvasEl?.getContext('2d'), [canvasEl])
-
-  // Handle viewport size changes
+const useHandleResize = (canvasEl: HTMLCanvasElement | null): void => {
   useEffect(() => {
     if (!canvasEl) return
 
@@ -84,44 +63,57 @@ function App() {
       window.removeEventListener('resize', handleResize)
     }
   }, [canvasEl])
+}
+
+const useOnKeydown = (f: (e: KeyboardEvent) => void) => {
+  const stableCallback = useStableFunction(f)
+
+  useEffect(() => {
+    document.addEventListener('keydown', stableCallback)
+
+    return () => {
+      document.removeEventListener('keydown', stableCallback)
+    }
+  }, [stableCallback])
+}
+
+const BASE_MOUSE_POSITION = asAbsolutePoint([0, 0])
+
+const BASE_STATE = {
+  screens: [],
+  patterns: [],
+}
+
+function App() {
+  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
+  const mousePositionRef = useRef<AbsolutePoint>(BASE_MOUSE_POSITION)
+
+  const [state, setState] = useState<State>(BASE_STATE)
+  const [draftClick, setDraftClick] = useState<DraftClick | undefined>(undefined)
+
+  const ctx = useMemo(() => canvasEl?.getContext('2d'), [canvasEl])
+
+  // Handle viewport size changes
+  useHandleResize(canvasEl)
 
   // Handle keyboard commands
-  useEffect(() => {
-    const handleKeyDown = (keydownEvent: KeyboardEvent) => {
-      if (keydownEvent.key === 'Escape') {
-        setState(BASE_STATE)
-      }
+  useOnKeydown(event => {
+    if (event.key === 'Escape') {
+      setState(BASE_STATE)
     }
+  })
 
-    document.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [])
-
-  // Render
-  useEffect(() => {
+  const render = useStableFunction((renderState: State) => {
     if (!ctx) return
 
-    let cancelled = false
+    requestAnimationFrame(() => {
+      drawFrame(ctx, renderState, { lowerQuality: draftClick !== undefined })
+    })
+  })
 
-    const render = (): void => {
-      if (cancelled) return
-
-      const draftState = getDraftState(state, draftClick, mousePositionRef.current)
-
-      drawFrame(ctx, draftState)
-
-      requestAnimationFrame(render)
-    }
-
-    requestAnimationFrame(render)
-
-    return () => {
-      cancelled = true
-    }
-  }, [ctx, draftClick, state])
+  useEffect(() => {
+    render(state)
+  }, [render, state])
 
   return (
     <StyledCanvas
@@ -160,6 +152,12 @@ function App() {
         if (!ctx) return
 
         mousePositionRef.current = getMousePoint(ctx, e)
+
+        if (draftClick !== undefined) {
+          const draftState = getDraftState(state, draftClick, mousePositionRef.current)
+
+          render(draftState)
+        }
       }}
     />
   )

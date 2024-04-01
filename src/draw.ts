@@ -16,9 +16,6 @@ const COLORS = '0123456789abcdef'
   .map(a => `#fa${a}`)
 
 const MIN_DEPTH = 3
-// Rather than limiting the max depth, we'll limit the number of draw calls instead.
-const MAX_DEPTH = Infinity
-const MAX_DRAW_CALLS = 1e4
 const SIZE_LIMIT = 0.001
 const DEBUG = true as boolean
 
@@ -103,12 +100,24 @@ const drawScreen = (
   ctx.stroke()
 }
 
+type RenderOptions = {
+  lowerQuality: boolean
+}
+
 type QueueEntry = {
   currentPattern: AbsolutePattern
   depth: number
 }
 
-const draw = (ctx: CanvasRenderingContext2D, state: State, globalMutableState: GlobalMutableState): void => {
+const draw = (
+  ctx: CanvasRenderingContext2D,
+  state: State,
+  globalMutableState: GlobalMutableState,
+  options: RenderOptions
+): void => {
+  const maxDepth = options.lowerQuality ? 50 : Infinity
+  const maxDrawCalls = options.lowerQuality ? 1e3 : 1e4
+
   const queue: QueueEntry[] = state.screens.map(screen => ({
     currentPattern: screen,
     depth: 0,
@@ -120,9 +129,9 @@ const draw = (ctx: CanvasRenderingContext2D, state: State, globalMutableState: G
     globalMutableState.queueIterations += 1
     const { currentPattern, depth } = queue.shift()!
 
-    if (depth > MAX_DEPTH) break
+    if (depth > maxDepth) break
     // Always render to MIN_DEPTH even if the draw call budget is empty
-    if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= MAX_DRAW_CALLS) break
+    if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= maxDrawCalls) break
 
     globalMutableState.drawScreenCalls += 1
     drawScreen(ctx, currentPattern, COLORS[Math.min(COLORS.length - 1, depth)])
@@ -142,7 +151,7 @@ const draw = (ctx: CanvasRenderingContext2D, state: State, globalMutableState: G
   }
 }
 
-export const drawFrame = (ctx: CanvasRenderingContext2D, state: State): void => {
+export const drawFrame = (ctx: CanvasRenderingContext2D, state: State, options: RenderOptions): void => {
   const globalMutableState: GlobalMutableState = {
     drawScreenCalls: 0,
     maxQueueSize: 0,
@@ -152,7 +161,7 @@ export const drawFrame = (ctx: CanvasRenderingContext2D, state: State): void => 
   const duration = measure(() => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-    draw(ctx, state, globalMutableState)
+    draw(ctx, state, globalMutableState, options)
   })
 
   if (DEBUG) {
