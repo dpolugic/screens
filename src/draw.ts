@@ -19,7 +19,7 @@ const MIN_DEPTH = 3
 const MAX_DEPTH = Infinity
 const MAX_DRAW_CALLS = 1e4
 const MAX_QUEUE_SIZE = 1e6
-const SIZE_LIMIT = 0.001
+const MIN_PATTERN_SIZE = 0.0005
 const DEBUG = true as boolean
 
 // -- hacky global state
@@ -63,7 +63,10 @@ const isPatternOutOfBounds = (pattern: AbsolutePattern): boolean => {
 
 const isPatternTooSmall = (pattern: AbsolutePattern): boolean => {
   const boundaries = getBoundariesFromPattern(pattern)
-  return boundaries.xMax - boundaries.xMin < SIZE_LIMIT || boundaries.yMax - boundaries.yMin < SIZE_LIMIT
+  return (
+    boundaries.xMax - boundaries.xMin < MIN_PATTERN_SIZE ||
+    boundaries.yMax - boundaries.yMin < MIN_PATTERN_SIZE
+  )
 }
 
 const isValidPattern = (pattern: AbsolutePattern): boolean => {
