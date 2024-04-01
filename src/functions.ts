@@ -129,7 +129,7 @@ export type ClickedPath = {
   nestedPath: NestedPath
 }
 
-const MAX_DEPTH = 4
+const MAX_DEPTH = 2
 
 const findClickedPattern = (
   previousBasePattern: Pattern,
