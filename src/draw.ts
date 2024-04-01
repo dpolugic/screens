@@ -18,6 +18,7 @@ const COLORS = '0123456789abcdef'
 const MIN_DEPTH = 3
 const MAX_DEPTH = Infinity
 const MAX_DRAW_CALLS = 1e4
+const MAX_QUEUE_SIZE = 1e6
 const SIZE_LIMIT = 0.001
 const DEBUG = true as boolean
 
@@ -143,7 +144,7 @@ const draw = (
   }
 }
 
-let cachedQueue: QueueEntry[] = []
+let drawQueue: QueueEntry[] = []
 
 export type DrawFrameResult = { done: boolean }
 
@@ -161,23 +162,29 @@ export const drawFrame = (
   const duration = measure(() => {
     if (options.reset) {
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-
-      cachedQueue = state.screens.map(screen => ({
+      drawQueue = state.screens.map(screen => ({
         currentPattern: screen,
         depth: 0,
       }))
-
-      globalMutableState.maxQueueSize = cachedQueue.length
+      globalMutableState.maxQueueSize = drawQueue.length
     }
 
-    draw(ctx, state, globalMutableState, cachedQueue)
+    draw(ctx, state, globalMutableState, drawQueue)
   })
 
   if (DEBUG) {
-    console.log(`drawFrame done in ${duration.toFixed(0)}ms. ${JSON.stringify(globalMutableState)}`)
+    console.log(
+      `drawFrame done in ${duration.toFixed(0)}ms. Queue size: ${drawQueue.length}. ${JSON.stringify(globalMutableState)}.`
+    )
+  }
+
+  // Cancel everything if queue becomes too large
+  if (drawQueue.length > MAX_QUEUE_SIZE) {
+    drawQueue = []
+    return { done: true }
   }
 
   return {
-    done: cachedQueue.length === 0,
+    done: drawQueue.length === 0,
   }
 }
