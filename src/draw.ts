@@ -107,26 +107,23 @@ function runUntilDone(generator: Generator<void, void, void>): void {
 function* drawPattern(
   ctx: CanvasRenderingContext2D,
   absolutePattern: AbsolutePattern,
-  allPatterns: Pattern[],
-  currentPattern: Pattern,
-  depth: number = 1
+  patterns: Pattern[],
+  depth: number = 0
 ): Generator<void, void, void> {
   if (shouldCancel(depth)) return
+  if (isPatternOutOfBounds(absolutePattern)) return
 
-  const virtualScreen = combinePatterns(absolutePattern, currentPattern)
-
-  if (isPatternOutOfBounds(virtualScreen)) return
-
-  const boundaries = getBoundariesFromPattern(virtualScreen)
+  const boundaries = getBoundariesFromPattern(absolutePattern)
   if (boundaries.xMax - boundaries.xMin < 0.001) return
   if (boundaries.yMax - boundaries.yMin < 0.001) return
 
-  drawScreen(ctx, virtualScreen, COLORS[Math.min(COLORS.length - 1, depth)])
+  drawScreen(ctx, absolutePattern, COLORS[Math.min(COLORS.length - 1, depth)])
   yield
 
   const generators = []
-  for (const originalPattern of allPatterns) {
-    generators.push(drawPattern(ctx, virtualScreen, allPatterns, originalPattern, depth + 1))
+  for (const pattern of patterns) {
+    const virtualScreen = combinePatterns(absolutePattern, pattern)
+    generators.push(drawPattern(ctx, virtualScreen, patterns, depth + 1))
   }
 
   yield* runInParallel(generators, () => drawCalls > MAX_DRAW_CALLS)
@@ -140,17 +137,9 @@ export const drawFrame = (
   drawCalls = 0
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-  // Draw top level screens
-  for (const screen of screens) {
-    drawScreen(ctx, screen, COLORS[0])
-  }
-
-  // Draw nested screens
   const generators = []
   for (const screen of screens) {
-    for (const pattern of patterns) {
-      generators.push(drawPattern(ctx, screen, patterns, pattern))
-    }
+    generators.push(drawPattern(ctx, screen, patterns))
   }
 
   runUntilDone(runInParallel(generators, () => drawCalls > MAX_DRAW_CALLS))
