@@ -1,6 +1,7 @@
 import {
   combinePatterns,
   getBoundariesFromPattern,
+  getScreenSize,
   mapPointToViewportSpace,
   pointIsInBoundaries,
 } from './functions'
@@ -45,9 +46,7 @@ const drawScreen = (
 ): void => {
   drawCalls += 1
 
-  const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
-
-  const viewportPattern = mapPatternToViewportSpace(absolutePattern, screenSize)
+  const viewportPattern = mapPatternToViewportSpace(absolutePattern, getScreenSize(ctx))
   const [p1, p2, p3, p4] = getPatternPoints(viewportPattern)
 
   ctx.lineWidth = 1

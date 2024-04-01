@@ -63,12 +63,13 @@ export const resolveRelativePointPosition = (relativePoint: Point, boundaries: B
   return [resolvedX, resolvedY]
 }
 
+export const getScreenSize = (ctx: CanvasRenderingContext2D): Size => [ctx.canvas.width, ctx.canvas.height]
+
 export const getMousePoint = (
   ctx: CanvasRenderingContext2D,
   mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>
 ) => {
-  const screenSize: Size = [ctx.canvas.width, ctx.canvas.height]
-  return mapPointFromViewportSpace([mouseEvent.clientX, mouseEvent.clientY], screenSize)
+  return mapPointFromViewportSpace([mouseEvent.clientX, mouseEvent.clientY], getScreenSize(ctx))
 }
 
 export function combinePatterns(parent: AbsolutePattern, child: Pattern): AbsolutePattern
