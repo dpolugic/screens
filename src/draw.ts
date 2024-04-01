@@ -16,10 +16,10 @@ const getPatternPoints = (pattern: Pattern): Point[] => {
   const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
 
   return [
-    [xMin, yMin],
-    [xMax, yMin],
-    [xMax, yMax],
-    [xMin, yMax],
+    [xMin, yMin], // top left
+    [xMax, yMin], // top right
+    [xMax, yMax], // bottom right
+    [xMin, yMax], // bottom left
   ]
 }
 
