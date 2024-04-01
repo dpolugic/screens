@@ -20,7 +20,7 @@ const MIN_DEPTH = 3
 const MAX_DEPTH = Infinity
 const MAX_DRAW_CALLS = 1e4
 const SIZE_LIMIT = 0.001
-const DEBUG = true as boolean
+const DEBUG = false as boolean
 
 // -- hacky global state
 
