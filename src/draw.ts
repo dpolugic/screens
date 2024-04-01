@@ -5,7 +5,7 @@ import {
   mapPointToViewportSpace,
   pointIsInBoundaries,
 } from './functions'
-import { AbsolutePattern, Pattern, Point, Size } from './types'
+import { AbsolutePattern, Pattern, Point, Size, State } from './types'
 
 const mapPatternToViewportSpace = (pattern: Pattern, screenSize: Size): Pattern => ({
   anchor: mapPointToViewportSpace(pattern.anchor, screenSize),
@@ -128,17 +128,13 @@ function* drawPattern(
   yield* runInParallel(generators)
 }
 
-export const drawFrame = (
-  ctx: CanvasRenderingContext2D,
-  screens: AbsolutePattern[],
-  patterns: Pattern[]
-): void => {
+export const drawFrame = (ctx: CanvasRenderingContext2D, state: State): void => {
   drawCalls = 0
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
   const generators = []
-  for (const screen of screens) {
-    generators.push(drawPattern(ctx, screen, patterns))
+  for (const screen of state.screens) {
+    generators.push(drawPattern(ctx, screen, state.patterns))
   }
 
   runUntilDone(runInParallel(generators))

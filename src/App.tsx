@@ -9,7 +9,7 @@ import {
   getMousePoint,
   getRelativePatternPosition,
 } from './functions'
-import { AbsolutePattern, Pattern, Point, State, asAbsolutePattern } from './types'
+import { AbsolutePattern, Point, State, asAbsolutePattern } from './types'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
@@ -22,10 +22,7 @@ const getDraftState = (
   state: State,
   clickedPath: ClickedPath | undefined,
   draftPattern: AbsolutePattern | undefined
-): {
-  screens: AbsolutePattern[]
-  patterns: Pattern[]
-} => {
+): State => {
   if (draftPattern === undefined) return state
 
   if (clickedPath === undefined) {
@@ -109,7 +106,7 @@ function App() {
     const render = (): void => {
       if (cancelled) return
 
-      const { screens: draftScreens, patterns: draftPatterns } = getDraftState(
+      const draftState = getDraftState(
         state,
         draftClick?.clickedPath,
         draftClick !== undefined
@@ -120,7 +117,7 @@ function App() {
           : undefined
       )
 
-      drawFrame(ctx, draftScreens, draftPatterns)
+      drawFrame(ctx, draftState)
 
       requestAnimationFrame(render)
     }
