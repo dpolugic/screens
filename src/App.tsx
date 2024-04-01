@@ -113,10 +113,10 @@ function App() {
         patterns,
         draftClickResult,
         draftScreenOrigin !== undefined
-          ? ({
+          ? asAbsolutePattern({
               anchor: draftScreenOrigin,
               target: mousePositionRef.current,
-            } as AbsolutePattern)
+            })
           : undefined
       )
 
