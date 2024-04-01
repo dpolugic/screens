@@ -49,14 +49,14 @@ const getPatternPoints = (pattern: Pattern): Point[] => {
 }
 
 const isPatternOutOfBounds = (pattern: AbsolutePattern): boolean => {
-  // We'll ignore everything more than 1 viewport size away.
-  // This is not fully accurate, but should be OK for most purposes.
+  // We'll ignore everything that's a bit outside the viewport.
+  // This is not really accurate, but should be OK for our purposes.
   return !getPatternPoints(pattern).some(p =>
     pointIsInBoundaries(p, {
-      xMin: -1,
-      xMax: 2,
-      yMin: -1,
-      yMax: 2,
+      xMin: -0.1,
+      xMax: 1.1,
+      yMin: -0.1,
+      yMax: 1.1,
     })
   )
 }
