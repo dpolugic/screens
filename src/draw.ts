@@ -89,15 +89,18 @@ const shouldCancel = (depth: number): boolean => {
 
 // Move each generator forward one step and then yield.
 function* runInParallel(generators: Generator<void, void, void>[]) {
-  let allDone: boolean = true
-  do {
+  let res
+  let allDone = true
+
+  for (;;) {
     allDone = true
     for (const g of generators) {
-      const res = g.next()
+      res = g.next()
       allDone &&= !!res.done
     }
+    if (allDone) break
     yield
-  } while (!allDone)
+  }
 }
 
 // Run generator until exhausted as if it was a regular function.
