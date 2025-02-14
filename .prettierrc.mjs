@@ -1,4 +1,4 @@
-const config = {
+export default {
   printWidth: 110,
   trailingComma: 'es5',
   semi: false,
@@ -8,5 +8,3 @@ const config = {
   quoteProps: 'consistent',
   plugins: ['prettier-plugin-organize-imports'],
 }
-
-module.exports = config
