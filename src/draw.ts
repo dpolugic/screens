@@ -2,8 +2,7 @@ import {
   combinePatterns,
   getBoundariesFromPattern,
   getScreenSize,
-  mapPointToViewportSpace,
-  pointIsInBoundaries,
+  mapPointToViewportSpace
 } from './functions'
 import { AbsoluteNumber, AbsolutePattern, Boundaries, Pattern, PatternNumber, Point, Size, State, ViewportPattern } from './types'
 
