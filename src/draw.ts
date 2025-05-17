@@ -57,20 +57,18 @@ const VALID_BOUNDARIES: Boundaries<AbsoluteNumber> = {
   yMax: 1.1 as AbsoluteNumber,
 }  
 
-const validatePatternPosition = (pattern: AbsolutePattern): boolean => {
-  return getPatternPoints(pattern).some(p => pointIsInBoundaries(p, VALID_BOUNDARIES))
-}
-
-const validatePatternSize = (pattern: AbsolutePattern): boolean => {
-  const boundaries = getBoundariesFromPattern(pattern)
-  return (
-    boundaries.xMax - boundaries.xMin >= MIN_PATTERN_SIZE ||
-    boundaries.yMax - boundaries.yMin >= MIN_PATTERN_SIZE
-  )
-}
-
 const isValidPattern = (pattern: AbsolutePattern): boolean => {
-  return validatePatternSize(pattern) && validatePatternPosition(pattern)
+  const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
+
+  return (
+    // Pattern fulfills minimum size.
+    xMax - xMin >= MIN_PATTERN_SIZE &&
+    yMax - yMin >= MIN_PATTERN_SIZE &&
+    // X and Y ranges overlap with the valid boundaries.
+    // We will only render patterns if at least one corner is inside the valid boundaries.
+    (xMin <= VALID_BOUNDARIES.xMax && xMax >= VALID_BOUNDARIES.xMin) &&
+    (yMin <= VALID_BOUNDARIES.yMax && yMax >= VALID_BOUNDARIES.yMin)
+  )
 }
 
 const measure = (f: () => void): number => {
@@ -85,10 +83,11 @@ const measure = (f: () => void): number => {
 
 const drawScreen = (
   ctx: CanvasRenderingContext2D,
+  screenSize: Size,
   absolutePattern: AbsolutePattern,
   strokeStyle: string
 ): void => {
-  const viewportPattern = mapPatternToViewportSpace(absolutePattern, getScreenSize(ctx))
+  const viewportPattern = mapPatternToViewportSpace(absolutePattern, screenSize)
   const [p1, p2, p3, p4] = getPatternPoints(viewportPattern)
 
   ctx.lineWidth = 1
@@ -117,6 +116,8 @@ const draw = (
   globalMutableState: GlobalMutableState,
   queue: QueueEntry[]
 ): void => {
+  const screenSize = getScreenSize(ctx)
+
   while (queue.length > 0) {
     globalMutableState.queueIterations += 1
     const { currentPattern, depth } = queue.shift()!
@@ -126,7 +127,7 @@ const draw = (
     if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= MAX_DRAW_CALLS) break
 
     globalMutableState.drawScreenCalls += 1
-    drawScreen(ctx, currentPattern, COLORS[Math.min(COLORS.length - 1, depth)]!)
+    drawScreen(ctx, screenSize, currentPattern, COLORS[Math.min(COLORS.length - 1, depth)]!)
 
     for (const pattern of state.patterns) {
       const virtualScreen = combinePatterns(currentPattern, pattern)
