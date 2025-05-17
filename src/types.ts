@@ -1,34 +1,54 @@
-type Brand<T> = T & { readonly __brand: unique symbol }
+type Brand<T, B extends string> = T & { readonly __brand: B }
 
-export type Point = [x: number, y: number]
 
-export type AbsolutePoint = Brand<Point>
+export type RelativeNumber = Brand<number, 'RelativeNumber'>
+export type AbsoluteNumber = Brand<number, 'AbsoluteNumber'>
+export type ViewportNumber = Brand<number, 'ViewportNumber'>
 
-export const asAbsolutePoint = (point: Point): AbsolutePoint => point as AbsolutePoint
+
+export type PatternNumber = RelativeNumber | AbsoluteNumber | ViewportNumber
+
+// Used as intermediate type when casting after doing calculations on coordinates.
+export type NumberPair = [x: number, y: number]
+
+export type Point<N extends PatternNumber> = [x: N, y: N]
+
+// offset within pattern
+export type RelativePoint = Point<RelativeNumber>
+
+// absolute point in screen space
+export type AbsolutePoint = Point<AbsoluteNumber>
+
+// absolute point in viewport space
+export type ViewportPoint = Point<ViewportNumber>
+
+export const asAbsolutePoint = (point: NumberPair): AbsolutePoint => point as AbsolutePoint
 
 export type Size = [width: number, height: number]
 
-export type Pattern<P extends Point = Point> = {
-  anchor: P // relative point representing base of new screen.
-  target: P // relative point representing other corner of new screen. can have negative coordinates.
+export type Pattern<N extends PatternNumber> = {
+  anchor: Point<N> // relative point representing base of new screen.
+  target: Point<N> // relative point representing other corner of new screen. can have negative coordinates.
 }
 
 // represents a pattern in relative coordinates.
-export type RelativePattern = Brand<Pattern>
+export type RelativePattern = Pattern<RelativeNumber>
 
 // represents a pattern in absolute coordinates.
-export type AbsolutePattern = Pattern<AbsolutePoint>
+export type AbsolutePattern = Pattern<AbsoluteNumber>
 
-export const asAbsolutePattern = (pattern: Pattern): AbsolutePattern => pattern as AbsolutePattern
+// represents a pattern in viewport coordinates.
+export type ViewportPattern = Pattern<ViewportNumber>
 
-export type Boundaries = {
-  xMin: number
-  xMax: number
-  yMin: number
-  yMax: number
+
+export type Boundaries<N extends PatternNumber> = {
+  xMin: N
+  xMax: N
+  yMin: N
+  yMax: N
 }
 
 export type State = {
   screens: AbsolutePattern[]
-  patterns: Pattern[]
+  patterns: RelativePattern[]
 }

@@ -1,24 +1,38 @@
 import {
+  AbsoluteNumber,
   AbsolutePattern,
   AbsolutePoint,
   Boundaries,
+  NumberPair,
   Pattern,
+  PatternNumber,
   Point,
+  RelativeNumber,
+  RelativePattern,
+  RelativePoint,
   Size,
   State,
-  asAbsolutePoint,
+  ViewportPoint
 } from './types'
 
-const getBoundariesFromTwoPoints = ([x1, y1]: Point, [x2, y2]: Point): Boundaries => {
+function min<N extends PatternNumber>(a: N, b: N): N {
+  return a < b ? a : b
+}
+
+function max<N extends PatternNumber>(a: N, b: N): N {
+  return a > b ? a : b
+}
+
+const getBoundariesFromTwoPoints = <N extends PatternNumber>([x1, y1]: Point<N>, [x2, y2]: Point<N>): Boundaries<N> => {
   return {
-    xMin: Math.min(x1, x2),
-    xMax: Math.max(x1, x2),
-    yMin: Math.min(y1, y2),
-    yMax: Math.max(y1, y2),
+    xMin: min(x1, x2),
+    xMax: max(x1, x2),
+    yMin: min(y1, y2),
+    yMax: max(y1, y2),
   }
 }
 
-export const normalizePattern = (pattern: Pattern): Pattern => {
+export const normalizePattern = <N extends PatternNumber>(pattern: Pattern<N>): Pattern<N> => {
   const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
 
   return {
@@ -27,11 +41,11 @@ export const normalizePattern = (pattern: Pattern): Pattern => {
   }
 }
 
-export const getBoundariesFromPattern = (pattern: Pattern): Boundaries => {
+export const getBoundariesFromPattern = <N extends PatternNumber>(pattern: Pattern<N>): Boundaries<N>=> {
   return getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
 }
 
-export const pointIsInBoundaries = (point: Point, boundaries: Boundaries): boolean => {
+export const pointIsInBoundaries = <N extends PatternNumber>(point: Point<N>, boundaries: Boundaries<N>): boolean => {
   const { xMin, xMax, yMin, yMax } = boundaries
   const [pointX, pointY] = point
 
@@ -45,19 +59,19 @@ const pointIsInPattern = (point: AbsolutePoint, pattern: AbsolutePattern): boole
 export const mapPointToViewportSpace = (
   [x, y]: AbsolutePoint,
   [viewportWidth, viewportHeight]: Size
-): Point => {
-  return [x * viewportWidth, y * viewportHeight]
+): ViewportPoint => {
+  return [x * viewportWidth, y * viewportHeight] satisfies NumberPair as ViewportPoint
 }
 
 // ts-unused-exports:disable-next-line
 export const mapPointFromViewportSpace = (
-  [x, y]: Point,
+  [x, y]: ViewportPoint,
   [viewportWidth, viewportHeight]: Size
 ): AbsolutePoint => {
-  return asAbsolutePoint([x / viewportWidth, y / viewportHeight])
+  return [x / viewportWidth, y / viewportHeight] satisfies NumberPair as AbsolutePoint
 }
 
-const getRelativePointPosition = (point: Point, pattern: Pattern): Point => {
+function getRelativePointPosition(point: RelativePoint, pattern: AbsolutePattern | RelativePattern): RelativePoint {
   const [x1, y1] = pattern.anchor
   const [x2, y2] = pattern.target
   const [x, y] = point
@@ -65,17 +79,17 @@ const getRelativePointPosition = (point: Point, pattern: Pattern): Point => {
   const relativeX = (x - x1) / (x2 - x1)
   const relativeY = (y - y1) / (y2 - y1)
 
-  return [relativeX, relativeY]
+  return [relativeX, relativeY] satisfies NumberPair as RelativePoint
 }
 
-export const getRelativePatternPosition = (pattern: Pattern, basePattern: Pattern): Pattern => {
+export function getRelativePatternPosition(pattern: RelativePattern, basePattern: AbsolutePattern | RelativePattern): RelativePattern {
   return {
     anchor: getRelativePointPosition(pattern.anchor, basePattern),
     target: getRelativePointPosition(pattern.target, basePattern),
   }
 }
 
-const resolveRelativePointPosition = (relativePoint: Point, pattern: Pattern): Point => {
+const resolveRelativePointPosition = <N extends RelativeNumber | AbsoluteNumber>(relativePoint: RelativePoint, pattern: Pattern<N>): Point<N> => {
   const [x1, y1] = pattern.anchor
   const [x2, y2] = pattern.target
   const [x, y] = relativePoint
@@ -83,7 +97,7 @@ const resolveRelativePointPosition = (relativePoint: Point, pattern: Pattern): P
   const resolvedX = x1 + x * (x2 - x1)
   const resolvedY = y1 + y * (y2 - y1)
 
-  return [resolvedX, resolvedY]
+  return [resolvedX, resolvedY] satisfies NumberPair as Point<N>
 }
 
 export const getScreenSize = (ctx: CanvasRenderingContext2D): Size => [ctx.canvas.width, ctx.canvas.height]
@@ -92,16 +106,16 @@ export const getMousePoint = (
   ctx: CanvasRenderingContext2D,
   mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>
 ): AbsolutePoint => {
-  return mapPointFromViewportSpace([mouseEvent.clientX, mouseEvent.clientY], getScreenSize(ctx))
+  const mousePosition = [mouseEvent.clientX, mouseEvent.clientY] satisfies NumberPair as ViewportPoint
+
+  return mapPointFromViewportSpace(mousePosition, getScreenSize(ctx))
 }
 
-export function combinePatterns(parent: AbsolutePattern, child: Pattern): AbsolutePattern
-export function combinePatterns(parent: Pattern, child: Pattern): Pattern
-export function combinePatterns(parent: Pattern, child: Pattern): Pattern {
+export function combinePatterns<ParentNumber extends RelativeNumber | AbsoluteNumber>(parent: Pattern<ParentNumber>, child: RelativePattern): Pattern<ParentNumber> {
   return {
     anchor: resolveRelativePointPosition(child.anchor, parent),
     target: resolveRelativePointPosition(child.target, parent),
-  }
+  } 
 }
 
 type NestedPath = number[]
@@ -115,7 +129,7 @@ const MAX_DEPTH = 4
 
 const findClickedPattern = (
   previousBasePattern: AbsolutePattern,
-  patterns: Pattern[],
+  patterns: RelativePattern[],
   point: AbsolutePoint,
   path: number[] = []
 ): NestedPath | undefined => {

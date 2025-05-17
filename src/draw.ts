@@ -5,7 +5,7 @@ import {
   mapPointToViewportSpace,
   pointIsInBoundaries,
 } from './functions'
-import { AbsolutePattern, Boundaries, Pattern, Point, Size, State } from './types'
+import { AbsoluteNumber, AbsolutePattern, Boundaries, Pattern, PatternNumber, Point, Size, State, ViewportPattern } from './types'
 
 // -- constants
 
@@ -32,12 +32,12 @@ type GlobalMutableState = {
 
 // -- helper functions
 
-const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): Pattern => ({
+const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): ViewportPattern => ({
   anchor: mapPointToViewportSpace(pattern.anchor, screenSize),
   target: mapPointToViewportSpace(pattern.target, screenSize),
 })
 
-const getPatternPoints = (pattern: Pattern): Point[] => {
+const getPatternPoints = <N extends PatternNumber>(pattern: Pattern<N>): Point<N>[] => {
   const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
 
   return [
@@ -45,17 +45,18 @@ const getPatternPoints = (pattern: Pattern): Point[] => {
     [xMax, yMin], // top right
     [xMax, yMax], // bottom right
     [xMin, yMax], // bottom left
-  ]
+  ] 
 }
 
 // We'll ignore everything that's a bit outside the viewport.
 // This is not really accurate, but should be OK for our purposes.
-const VALID_BOUNDARIES: Boundaries = {
-  xMin: -0.1,
-  xMax: 1.1,
-  yMin: -0.1,
-  yMax: 1.1,
-}
+const VALID_BOUNDARIES: Boundaries<AbsoluteNumber> = {
+  xMin: -0.1 as AbsoluteNumber,
+  xMax: 1.1 as AbsoluteNumber,
+  yMin: -0.1 as AbsoluteNumber,
+  yMax: 1.1 as AbsoluteNumber,
+}  
+
 const validatePatternPosition = (pattern: AbsolutePattern): boolean => {
   return getPatternPoints(pattern).some(p => pointIsInBoundaries(p, VALID_BOUNDARIES))
 }

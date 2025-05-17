@@ -9,7 +9,7 @@ import {
   getRelativePatternPosition,
 } from './functions'
 import { useStableFunction } from './hooks'
-import { AbsolutePoint, State, asAbsolutePoint } from './types'
+import { AbsolutePattern, AbsolutePoint, RelativePattern, State, asAbsolutePoint } from './types'
 
 const StyledCanvas = styled.canvas`
   /* border: 1px solid #faf; */
@@ -22,7 +22,7 @@ const getDraftState = (state: State, draftClick: DraftClick, mousePosition: Abso
   const draftPattern = {
     anchor: draftClick.anchor,
     target: mousePosition,
-  }
+  } 
 
   if (draftClick.clickedPath === undefined) {
     // create top-level screen
@@ -32,7 +32,11 @@ const getDraftState = (state: State, draftClick: DraftClick, mousePosition: Abso
   // if draft origin is inside existing screen, add a pattern instead
   const { screenIndex, nestedPath } = draftClick.clickedPath
 
-  let newDraft = getRelativePatternPosition(draftPattern, state.screens[screenIndex])
+
+  // Re-interpret as relative pattern.
+  const draftPatternRelative = draftPattern satisfies AbsolutePattern as unknown as RelativePattern
+
+  let newDraft = getRelativePatternPosition(draftPatternRelative, state.screens[screenIndex])
   for (const k of nestedPath) {
     newDraft = getRelativePatternPosition(newDraft, state.patterns[k])
   }
