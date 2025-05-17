@@ -138,7 +138,7 @@ const findClickedPattern = (
   let best: NestedPath | undefined = undefined
 
   for (let i = 0; i < patterns.length; i++) {
-    const newBasePattern = combinePatterns(previousBasePattern, patterns[i])
+    const newBasePattern = combinePatterns(previousBasePattern, patterns[i]!)
     const newPath = path.concat(i)
 
     const nestedResult = findClickedPattern(newBasePattern, patterns, point, newPath)
@@ -170,7 +170,8 @@ export const findClickedScreenOrPattern = (
 
   let best: ClickedPath | undefined = undefined
   for (let i = 0; i < screens.length; i++) {
-    const clickedPath = findClickedPattern(screens[i], patterns, point)
+    const screen = screens[i]!
+    const clickedPath = findClickedPattern(screen, patterns, point)
 
     if (clickedPath !== undefined) {
       if (best === undefined || clickedPath.length > best.nestedPath.length) {
@@ -179,7 +180,7 @@ export const findClickedScreenOrPattern = (
           nestedPath: clickedPath,
         }
       }
-    } else if (pointIsInPattern(point, screens[i])) {
+    } else if (pointIsInPattern(point, screen)) {
       // only check current depth if there's no nested result
       if (best === undefined) {
         best = {

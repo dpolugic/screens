@@ -37,7 +37,7 @@ const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): 
   target: mapPointToViewportSpace(pattern.target, screenSize),
 })
 
-const getPatternPoints = <N extends PatternNumber>(pattern: Pattern<N>): Point<N>[] => {
+const getPatternPoints = <N extends PatternNumber>(pattern: Pattern<N>): [Point<N>, Point<N>, Point<N>, Point<N>] => {
   const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
 
   return [
@@ -126,7 +126,7 @@ const draw = (
     if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= MAX_DRAW_CALLS) break
 
     globalMutableState.drawScreenCalls += 1
-    drawScreen(ctx, currentPattern, COLORS[Math.min(COLORS.length - 1, depth)])
+    drawScreen(ctx, currentPattern, COLORS[Math.min(COLORS.length - 1, depth)]!)
 
     for (const pattern of state.patterns) {
       const virtualScreen = combinePatterns(currentPattern, pattern)

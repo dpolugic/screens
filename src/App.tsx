@@ -36,9 +36,9 @@ const getDraftState = (state: State, draftClick: DraftClick, mousePosition: Abso
   // Re-interpret as relative pattern.
   const draftPatternRelative = draftPattern satisfies AbsolutePattern as unknown as RelativePattern
 
-  let newDraft = getRelativePatternPosition(draftPatternRelative, state.screens[screenIndex])
+  let newDraft = getRelativePatternPosition(draftPatternRelative, state.screens[screenIndex]!)
   for (const k of nestedPath) {
-    newDraft = getRelativePatternPosition(newDraft, state.patterns[k])
+    newDraft = getRelativePatternPosition(newDraft, state.patterns[k]!)
   }
 
   return { ...state, patterns: state.patterns.concat(newDraft) }
