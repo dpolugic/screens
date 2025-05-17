@@ -12,26 +12,26 @@
     "format": "prettier --write ./src"
   },
   "dependencies": {
-    "prettier": "^3.5.1",
+    "prettier": "^3.5.3",
     "prettier-plugin-organize-imports": "^4.1.0",
-    "react": "^19",
-    "react-dom": "^19",
-    "styled-components": "^6.1.15"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "styled-components": "^6.1.18"
   },
   "devDependencies": {
-    "@eslint/compat": "^1.2.6",
-    "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.24.0",
-    "@typescript-eslint/parser": "^8.24.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "eslint": "^9.20.1",
-    "eslint-plugin-react-hooks": "^5.1.0",
-    "eslint-plugin-react-refresh": "^0.4.19",
+    "@eslint/compat": "^1.2.9",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "@vitejs/plugin-react": "^4.4.1",
+    "eslint": "^9.27.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "ts-unused-exports": "^11.0.1",
-    "typescript": "^5.7.3",
-    "vite": "^6.1.0"
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
   },
   "packageManager": "pnpm@10.4.0+sha256.e57e8a544f7a84247cfa77dd6d923eae5199a373474e53eab1f540c796289386",
   "pnpm": {
