@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 
-import styled from 'styled-components'
 import { drawFrameIncrementally, drawFramePreview } from './draw/draw-frame'
 import {
   ClickedPath,
@@ -10,13 +9,6 @@ import {
 } from './functions'
 import { useStableFunction } from './hooks'
 import { AbsolutePattern, AbsolutePoint, RelativePattern, State, asAbsolutePoint } from './types'
-
-const StyledCanvas = styled.canvas`
-  /* border: 1px solid #faf; */
-  display: block;
-  width: 100%;
-  height: 100%;
-`
 
 const getDraftState = (state: State, draftClick: DraftClick, mousePosition: AbsolutePoint): State => {
   const draftPattern = {
@@ -153,7 +145,8 @@ function App() {
   }, [draftClick, state, resizeCount, ctx])
 
   return (
-    <StyledCanvas
+    <canvas
+      className="w-full h-full"
       ref={setCanvasEl}
       onPointerDown={e => {
         if (!ctx) return

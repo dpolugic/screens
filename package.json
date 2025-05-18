@@ -14,11 +14,12 @@
     "test:watch": "vitest --watch"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.7",
     "prettier": "^3.5.3",
     "prettier-plugin-organize-imports": "^4.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "styled-components": "^6.1.18"
+    "tailwindcss": "^4.1.7"
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.9",
@@ -41,6 +42,7 @@
   "packageManager": "pnpm@10.4.0+sha256.e57e8a544f7a84247cfa77dd6d923eae5199a373474e53eab1f540c796289386",
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
       "esbuild"
     ]
   }
