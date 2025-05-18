@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 
 import styled from 'styled-components'
-import { drawFrameIncrementally, drawFramePreview } from './draw'
+import { drawFrameIncrementally, drawFramePreview } from './draw/draw-frame'
 import {
   ClickedPath,
   findClickedScreenOrPattern,
