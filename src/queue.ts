@@ -55,6 +55,10 @@ export class Queue<T> {
   }
 
   clear() {
+    for (let i = 0; i < this._size; i++) {
+      this.buffer[(this.head + i) % this._size] = undefined
+    }
+
     this.head = 0
     this.tail = 0
     this._size = 0
