@@ -32,10 +32,6 @@ export class Queue<T> {
 
   /**
     * Compact the queue to make sure it doesn't grow indefinitely.
-    * Must be triggered manually.
-    * This is a naive approach and could be improved.
-    * 
-    * We could try using a circular buffer instead.
     */
   compact() {
     this.#queue = this.#queue.slice(this.#head)
