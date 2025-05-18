@@ -2,10 +2,10 @@
  * A fixed-size queue, backed by a circular buffer.
  */
 export class Queue<T> {
-  #buffer: (T | undefined)[] = []
-  #head = 0
-  #tail = 0
-  #size = 0
+  private buffer: (T | undefined)[] = []
+  private head = 0
+  private tail = 0
+  private _size = 0
 
   constructor({initialItems = [], size}: { initialItems?: T[], size: number}) {
     if (size <= 0) {
@@ -16,47 +16,47 @@ export class Queue<T> {
       throw new Error('Initial items exceed queue capacity')
     }
 
-    this.#buffer = new Array(size).fill(undefined)
+    this.buffer = new Array(size).fill(undefined)
 
     for (let i = 0; i< initialItems.length; i++) {
-      this.#buffer[i] = initialItems[i]
+      this.buffer[i] = initialItems[i]
     }
 
-    this.#size = initialItems.length
-    this.#tail = initialItems.length
+    this._size = initialItems.length
+    this.tail = initialItems.length
   }
 
-  get size() {
-    return this.#size
+  get size(): number {
+    return this._size
   }
 
   push(value: T) {
-    if (this.#size === this.#buffer.length) {
+    if (this._size === this.buffer.length) {
       throw new Error('Queue is full')
     }
 
-    this.#buffer[this.#tail] = value
-    this.#tail = (this.#tail + 1) % this.#buffer.length
-    this.#size++
+    this.buffer[this.tail] = value
+    this.tail = (this.tail + 1) % this.buffer.length
+    this._size++
   }
 
   shift(): T {
-    if (this.#size === 0) {
+    if (this._size === 0) {
       throw new Error('Queue is empty')
     }
 
-    const value = this.#buffer[this.#head]!
-    this.#buffer[this.#head] = undefined
+    const value = this.buffer[this.head]!
+    this.buffer[this.head] = undefined
 
-    this.#head = (this.#head + 1) % this.#buffer.length
-    this.#size--
+    this.head = (this.head + 1) % this.buffer.length
+    this._size--
 
     return value
   }
 
   clear() {
-    this.#head = 0
-    this.#tail = 0
-    this.#size = 0
+    this.head = 0
+    this.tail = 0
+    this._size = 0
   }
 }

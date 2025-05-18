@@ -5,4 +5,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: '/screens/',
   plugins: [react()],
+  build: {
+    // minify: false
+  }
 })
