@@ -12,6 +12,7 @@ import {
   RelativePoint,
   Size,
   State,
+  ViewportPattern,
   ViewportPoint
 } from './types'
 
@@ -61,6 +62,27 @@ export const mapPointToViewportSpace = (
   [viewportWidth, viewportHeight]: Size
 ): ViewportPoint => {
   return [Math.round(x * viewportWidth), Math.round(y * viewportHeight)] satisfies NumberPair as ViewportPoint
+}
+
+
+// ts-unused-exports:disable-next-line
+export const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): ViewportPattern => ({
+  anchor: mapPointToViewportSpace(pattern.anchor, screenSize),
+  target: mapPointToViewportSpace(pattern.target, screenSize),
+})
+
+// ts-unused-exports:disable-next-line
+export const getPatternPoints = <N extends PatternNumber>(
+  pattern: Pattern<N>
+): [Point<N>, Point<N>, Point<N>, Point<N>] => {
+  const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
+
+  return [
+    [xMin, yMin], // top left
+    [xMax, yMin], // top right
+    [xMax, yMax], // bottom right
+    [xMin, yMax], // bottom left
+  ]
 }
 
 // ts-unused-exports:disable-next-line

@@ -1,21 +1,6 @@
-import {
-  combinePatterns,
-  getBoundariesFromPattern,
-  getScreenSize,
-  mapPointToViewportSpace,
-} from './functions'
+import { combinePatterns, getBoundariesFromPattern, getScreenSize } from './functions'
 import { Queue } from './queue'
-import {
-  AbsoluteNumber,
-  AbsolutePattern,
-  Boundaries,
-  Pattern,
-  PatternNumber,
-  Point,
-  Size,
-  State,
-  ViewportPattern,
-} from './types'
+import { AbsoluteNumber, AbsolutePattern, Boundaries, State } from './types'
 
 // -- constants
 
@@ -32,28 +17,6 @@ const MAX_DRAW_TIME_MS = 15 // how long to draw a frame in ms
 const MAX_QUEUE_SIZE = 1e6
 const MIN_PATTERN_SIZE = 0.0005 // ignore patterns where either side is smaller than this
 const DEBUG = true as boolean
-
-// -- helper functions
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): ViewportPattern => ({
-  anchor: mapPointToViewportSpace(pattern.anchor, screenSize),
-  target: mapPointToViewportSpace(pattern.target, screenSize),
-})
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const getPatternPoints = <N extends PatternNumber>(
-  pattern: Pattern<N>
-): [Point<N>, Point<N>, Point<N>, Point<N>] => {
-  const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
-
-  return [
-    [xMin, yMin], // top left
-    [xMax, yMin], // top right
-    [xMax, yMax], // bottom right
-    [xMin, yMax], // bottom left
-  ]
-}
 
 // We'll ignore everything that's a bit outside the viewport.
 // This is not really accurate, but should be OK for our purposes.
@@ -224,7 +187,7 @@ export function* drawFrameIncrementally(
 
     const duration = measure(() => {
       const start = performance.now()
-      
+
       while (true) {
         const iteratorResult = chunkedDrawsIterator.next()
 
