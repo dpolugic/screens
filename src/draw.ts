@@ -1,6 +1,5 @@
 import {
   combinePatterns,
-  getBoundariesFromPattern,
   getScreenSize,
   mapPatternToViewportSpace,
   mutateBoundariesFromPattern,
@@ -34,23 +33,6 @@ function getViewportBoundaries(screenSize: Size): Boundaries<ViewportNumber> {
     yMin: (-0.1 * screenSize[1]) as ViewportNumber,
     yMax: (1.1 * screenSize[1]) as ViewportNumber,
   }
-}
-
-const isValidPattern = (
-  patternBoundaries: Boundaries<ViewportNumber>,
-  viewportBoundaries: Boundaries<ViewportNumber>
-): boolean => {
-  return (
-    // Pattern fulfills minimum size.
-    patternBoundaries.xMax - patternBoundaries.xMin >= MIN_PATTERN_SIZE_PX &&
-    patternBoundaries.yMax - patternBoundaries.yMin >= MIN_PATTERN_SIZE_PX &&
-    // X and Y ranges overlap with the valid boundaries.
-    // We will only render patterns if at least one corner is inside the valid boundaries.
-    patternBoundaries.xMin <= viewportBoundaries.xMax &&
-    patternBoundaries.xMax >= viewportBoundaries.xMin &&
-    patternBoundaries.yMin <= viewportBoundaries.yMax &&
-    patternBoundaries.yMax >= viewportBoundaries.yMin
-  )
 }
 
 const measure = (f: () => void): number => {

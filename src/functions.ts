@@ -14,30 +14,12 @@ import {
   ViewportPoint
 } from './types'
 
-export function minPatternNumber<N extends PatternNumber>(a: N, b: N): N {
+function minPatternNumber<N extends PatternNumber>(a: N, b: N): N {
   return Math.min(a, b) as N
 }
 
-export function maxPatternNumber<N extends PatternNumber>(a: N, b: N): N {
+function maxPatternNumber<N extends PatternNumber>(a: N, b: N): N {
   return Math.max(a, b) as N
-}
-
-const getBoundariesFromTwoPoints = <N extends PatternNumber>([x1, y1]: Point<N>, [x2, y2]: Point<N>): Boundaries<N> => {
-  return {
-    xMin: minPatternNumber(x1, x2),
-    xMax: maxPatternNumber(x1, x2),
-    yMin: minPatternNumber(y1, y2),
-    yMax: maxPatternNumber(y1, y2),
-  }
-}
-
-export const normalizePattern = <N extends PatternNumber>(pattern: Pattern<N>): Pattern<N> => {
-  const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
-
-  return {
-    anchor: [xMin, yMin],
-    target: [xMax, yMax],
-  }
 }
 
 /**
@@ -57,14 +39,14 @@ export function mutateBoundariesFromPattern<N extends PatternNumber>(pattern: Pa
 }
 
 
-export const getBoundariesFromPattern = <N extends PatternNumber>(pattern: Pattern<N>): Boundaries<N>=> {
+const getBoundariesFromPattern = <N extends PatternNumber>(pattern: Pattern<N>): Boundaries<N>=> {
   const obj: Boundaries<N> = { xMin: 0 as N, xMax: 0 as N, yMin: 0 as N, yMax: 0 as N }
   mutateBoundariesFromPattern(pattern, obj)
   return obj
 }
 
 
-export const pointIsInBoundaries = <N extends PatternNumber>(point: Point<N>, boundaries: Boundaries<N>): boolean => {
+const pointIsInBoundaries = <N extends PatternNumber>(point: Point<N>, boundaries: Boundaries<N>): boolean => {
   const { xMin, xMax, yMin, yMax } = boundaries
   const [pointX, pointY] = point
 
@@ -75,7 +57,7 @@ const pointIsInPattern = (point: AbsolutePoint, pattern: AbsolutePattern): boole
   return pointIsInBoundaries(point, getBoundariesFromPattern(pattern))
 }
 
-export const mapPointToViewportSpace = (
+const mapPointToViewportSpace = (
   [x, y]: AbsolutePoint,
   [viewportWidth, viewportHeight]: Size
 ): ViewportPoint => {
