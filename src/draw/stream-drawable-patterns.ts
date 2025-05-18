@@ -15,6 +15,11 @@ function getViewportBoundaries(screenSize: Size): Boundaries<ViewportNumber> {
   }
 }
 
+type QueueEntry = {
+  currentPattern: ViewportPattern
+  depth: number
+}
+
 // We'll use a global queue to avoid reallocating it on every preview frame.
 const patternQueue = new Queue<QueueEntry>({
   initialItems: [],
@@ -48,10 +53,7 @@ const isValidPattern = (() => {
   }
 })()
 
-type QueueEntry = {
-  currentPattern: ViewportPattern
-  depth: number
-}
+
 
 /**
  * Creates a generator that yields drawable patterns one by one.

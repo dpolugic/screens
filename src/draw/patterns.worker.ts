@@ -1,19 +1,20 @@
-import { State, ViewportPattern } from '../types'
+import { AbsolutePattern, RelativePattern, State, ViewportPattern } from '../types'
+import { streamBatchedDrawablePatterns } from './stream-batched-drawable-patterns'
 
 type WorkerState =
   | {
-      type: 'idle'
+      type: 'stopped'
     }
   | {
       type: 'generating'
       state: State
     }
-  | {
-      type: 'paused'
-      state: State
-    }
 
 type WorkerMessageInput =
+  | {
+      type: 'initialize'
+      ctx: OffscreenCanvasRenderingContext2D
+    }
   | {
       type: 'generate'
       state: State
@@ -21,25 +22,29 @@ type WorkerMessageInput =
   | {
       type: 'stop'
     }
-  | {
-      type: 'pause'
-    }
-  | {
-      type: 'resume'
-    }
 
-type WorkerMessageOutput = {
-  type: 'batch'
-  patterns: ViewportPattern[]
-}
+type WorkerMessageOutput =
+  | {
+      type: 'batch'
+      depth: number
+      patterns: ViewportPattern[]
+    }
+  | {
+      type: 'done'
+    }
 
 let state: WorkerState = {
-  type: 'idle',
+  type: 'stopped',
 }
 
 function handleMessage(message: WorkerMessageInput) {
   switch (message.type) {
     case 'generate': {
+      if (state.type === 'generating') {
+        console.warn('Already generating patterns')
+        break
+      }
+
       // Start generating patterns
       state = {
         type: 'generating',
@@ -49,7 +54,9 @@ function handleMessage(message: WorkerMessageInput) {
       break
     }
     case 'stop': {
-      // Stop
+      state = {
+        type: 'stopped',
+      }
       break
     }
     default: {
@@ -68,9 +75,26 @@ self.onmessage = event => {
 }
 
 function generatePatterns() {
-  // Post batches of patterns back to main thread
+  for (const { depth, patterns } of streamBatchedDrawablePatterns({
+    state: {
+      patterns: [{ anchor: [0, 0], target: [0.5, 0.5] } as RelativePattern],
+      screens: [{ anchor: [0.2, 0.2], target: [0.8, 0.8] } as AbsolutePattern],
+    },
+    chunkSize: 5,
+    screenSize: [600, 400],
+  })) {
+    if (state.type !== 'generating') {
+      break
+    }
+
+    sendMessage({
+      type: 'batch',
+      depth,
+      patterns,
+    })
+  }
+
   sendMessage({
-    type: 'batch',
-    patterns: [], // TODO: Generate actual patterns
+    type: 'done',
   })
 }
