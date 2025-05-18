@@ -1,6 +1,12 @@
-import { combinePatterns, getBoundariesFromPattern, getScreenSize } from './functions'
+import {
+  combinePatterns,
+  getBoundariesFromPattern,
+  getScreenSize,
+  mapPatternToViewportSpace,
+  mutateBoundariesFromPattern,
+} from './functions'
 import { Queue } from './queue'
-import { AbsoluteNumber, AbsolutePattern, Boundaries, State } from './types'
+import { Boundaries, Size, State, ViewportNumber, ViewportPattern } from './types'
 
 // -- constants
 
@@ -12,34 +18,38 @@ const COLORS = '0123456789abcdef'
 
 const MIN_DEPTH = 3
 const MAX_DEPTH = Infinity
-const MAX_PREVIEW_DRAW_CALLS = 1e4 // number of shapes to draw per preview frame
+const MAX_PREVIEW_DRAW_CALLS = 5e3 // number of shapes to draw per preview frame
 const MAX_DRAW_TIME_MS = 15 // how long to draw a frame in ms
 const MAX_QUEUE_SIZE = 1e6
-const MIN_PATTERN_SIZE = 0.0005 // ignore patterns where either side is smaller than this
+// const MIN_PATTERN_SIZE = 0.0005 // ignore patterns where either side is smaller than this
+const MIN_PATTERN_SIZE_PX = 1 // ignore patterns where either side is smaller than this
 const DEBUG = true as boolean
 
 // We'll ignore everything that's a bit outside the viewport.
 // This is not really accurate, but should be OK for our purposes.
-const VALID_BOUNDARIES: Boundaries<AbsoluteNumber> = {
-  xMin: -0.1 as AbsoluteNumber,
-  xMax: 1.1 as AbsoluteNumber,
-  yMin: -0.1 as AbsoluteNumber,
-  yMax: 1.1 as AbsoluteNumber,
+function getViewportBoundaries(screenSize: Size): Boundaries<ViewportNumber> {
+  return {
+    xMin: (-0.1 * screenSize[0]) as ViewportNumber,
+    xMax: (1.1 * screenSize[0]) as ViewportNumber,
+    yMin: (-0.1 * screenSize[1]) as ViewportNumber,
+    yMax: (1.1 * screenSize[1]) as ViewportNumber,
+  }
 }
 
-const isValidPattern = (pattern: AbsolutePattern): boolean => {
-  const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
-
+const isValidPattern = (
+  patternBoundaries: Boundaries<ViewportNumber>,
+  viewportBoundaries: Boundaries<ViewportNumber>
+): boolean => {
   return (
     // Pattern fulfills minimum size.
-    xMax - xMin >= MIN_PATTERN_SIZE &&
-    yMax - yMin >= MIN_PATTERN_SIZE &&
+    patternBoundaries.xMax - patternBoundaries.xMin >= MIN_PATTERN_SIZE_PX &&
+    patternBoundaries.yMax - patternBoundaries.yMin >= MIN_PATTERN_SIZE_PX &&
     // X and Y ranges overlap with the valid boundaries.
     // We will only render patterns if at least one corner is inside the valid boundaries.
-    xMin <= VALID_BOUNDARIES.xMax &&
-    xMax >= VALID_BOUNDARIES.xMin &&
-    yMin <= VALID_BOUNDARIES.yMax &&
-    yMax >= VALID_BOUNDARIES.yMin
+    patternBoundaries.xMin <= viewportBoundaries.xMax &&
+    patternBoundaries.xMax >= viewportBoundaries.xMin &&
+    patternBoundaries.yMin <= viewportBoundaries.yMax &&
+    patternBoundaries.yMax >= viewportBoundaries.yMin
   )
 }
 
@@ -52,7 +62,7 @@ const measure = (f: () => void): number => {
 }
 
 type QueueEntry = {
-  currentPattern: AbsolutePattern
+  currentPattern: ViewportPattern
   depth: number
 }
 
@@ -62,18 +72,62 @@ const patternQueue = new Queue<QueueEntry>({
   size: MAX_QUEUE_SIZE,
 })
 
-function* generateDrawQueue(state: State): Generator<QueueEntry, void, void> {
+/**
+ * Creates a generator that yields drawable patterns one by one.
+ *
+ * It starts with the initial screens and recursively applies all defined patterns
+ * from the state. Each yielded pattern includes its generation depth.
+ * The generation proceeds in a breadth-first manner.
+ *
+ * @param state The current application state, containing screens and patterns.
+ * @param screenSize The current size of the screen/viewport.
+ * @returns A generator yielding `QueueEntry` objects ({ currentPattern: ViewportPattern, depth: number }).
+ */
+function* streamDrawablePatterns({
+  state,
+  screenSize,
+}: {
+  state: State
+  screenSize: Size
+}): Generator<QueueEntry, void, void> {
   console.log(
     `generateDrawQueue start. Initial screens: ${state.screens.length}, Patterns: ${state.patterns.length}`
   )
+
+  const viewportBoundaries = getViewportBoundaries(screenSize)
 
   patternQueue.clear()
 
   for (const screen of state.screens) {
     patternQueue.push({
-      currentPattern: screen,
+      currentPattern: mapPatternToViewportSpace(screen, screenSize),
       depth: 0,
     })
+  }
+
+  // Optimization: Only allocate boundaries object once and mutate it in place.
+  // Make sure to update this object before using it!
+  const patternBoundaries: Boundaries<ViewportNumber> = {
+    xMin: 0 as ViewportNumber,
+    xMax: 0 as ViewportNumber,
+    yMin: 0 as ViewportNumber,
+    yMax: 0 as ViewportNumber,
+  }
+
+  function isValidPattern(pattern: ViewportPattern): boolean {
+    mutateBoundariesFromPattern(pattern, patternBoundaries)
+
+    return (
+      // Pattern fulfills minimum size.
+      patternBoundaries.xMax - patternBoundaries.xMin >= MIN_PATTERN_SIZE_PX &&
+      patternBoundaries.yMax - patternBoundaries.yMin >= MIN_PATTERN_SIZE_PX &&
+      // X and Y ranges overlap with the valid boundaries.
+      // We will only render patterns if at least one corner is inside the valid boundaries.
+      patternBoundaries.xMin <= viewportBoundaries.xMax &&
+      patternBoundaries.xMax >= viewportBoundaries.xMin &&
+      patternBoundaries.yMin <= viewportBoundaries.yMax &&
+      patternBoundaries.yMax >= viewportBoundaries.yMin
+    )
   }
 
   let iterations = 0
@@ -93,11 +147,11 @@ function* generateDrawQueue(state: State): Generator<QueueEntry, void, void> {
     }
 
     for (const pattern of state.patterns) {
-      const virtualScreen = combinePatterns(entry.currentPattern, pattern)
+      const viewportPattern = combinePatterns(entry.currentPattern, pattern)
 
-      if (isValidPattern(virtualScreen)) {
+      if (isValidPattern(viewportPattern)) {
         patternQueue.push({
-          currentPattern: virtualScreen,
+          currentPattern: viewportPattern,
           depth: entry.depth + 1,
         })
 
@@ -119,11 +173,30 @@ function* generateDrawQueue(state: State): Generator<QueueEntry, void, void> {
 
 type Chunk = {
   depth: number
-  patterns: AbsolutePattern[]
+  patterns: ViewportPattern[]
 }
 
-function* generateChunkedDraws(state: State, chunkSize: number): Generator<Chunk, void, void> {
-  const drawQueueIterator = generateDrawQueue(state)
+/**
+ * Creates a generator that groups drawable patterns from `streamDrawablePatterns` into chunks.
+ *
+ * Patterns are batched together based on their generation depth or a maximum
+ * chunk size. This is useful for processing or rendering patterns in groups.
+ *
+ * @param state The current application state.
+ * @param chunkSize The maximum number of patterns to include in a single chunk.
+ * @param screenSize The current size of the screen/viewport.
+ * @returns A generator yielding `Chunk` objects ({ depth: number, patterns: ViewportPattern[] }).
+ */
+function* streamBatchedDrawablePatterns({
+  state,
+  chunkSize,
+  screenSize,
+}: {
+  state: State
+  chunkSize: number
+  screenSize: Size
+}): Generator<Chunk, void, void> {
+  const drawQueueIterator = streamDrawablePatterns({ state, screenSize })
 
   let chunk: Chunk = {
     depth: 0,
@@ -176,7 +249,7 @@ export function* drawFrameIncrementally(
 
   const screenSize = getScreenSize(ctx)
 
-  const chunkedDrawsIterator = generateChunkedDraws(state, 1000)
+  const batchedPatternsIterator = streamBatchedDrawablePatterns({ state, chunkSize: 1000, screenSize })
 
   let iterations = 0
 
@@ -189,7 +262,7 @@ export function* drawFrameIncrementally(
       const start = performance.now()
 
       while (true) {
-        const iteratorResult = chunkedDrawsIterator.next()
+        const iteratorResult = batchedPatternsIterator.next()
 
         if (iteratorResult.done) break
 
@@ -201,32 +274,24 @@ export function* drawFrameIncrementally(
         ctx.strokeStyle = COLORS[Math.min(COLORS.length - 1, depth)]!
         ctx.beginPath()
 
-        // Optimization: Only allocate variables once.
-        let xMin: number
-        let yMin: number
-        let xMax: number
-        let yMax: number
-        let x1: number
-        let y1: number
-        let x2: number
-        let y2: number
+        // Optimization: Only allocate boundaries object once and mutate it in place.
+        const boundaries: Boundaries<ViewportNumber> = {
+          xMin: 0 as ViewportNumber,
+          xMax: 0 as ViewportNumber,
+          yMin: 0 as ViewportNumber,
+          yMax: 0 as ViewportNumber,
+        }
 
-        for (const absolutePattern of patterns) {
-          // Convert to viewport space.
-          x1 = Math.round(absolutePattern.anchor[0] * screenSize[0])
-          y1 = Math.round(absolutePattern.anchor[1] * screenSize[1])
-          x2 = Math.round(absolutePattern.target[0] * screenSize[0])
-          y2 = Math.round(absolutePattern.target[1] * screenSize[1])
-
-          // Get boundaries.
-          // Optimization: Do not use getBoundariesFromPattern because it creates too many objects.
-          xMin = Math.min(x1, x2)
-          yMin = Math.min(y1, y2)
-          xMax = Math.max(x1, x2)
-          yMax = Math.max(y1, y2)
+        for (const viewportPattern of patterns) {
+          mutateBoundariesFromPattern(viewportPattern, boundaries)
 
           // Draw rectangle.
-          ctx.rect(xMin, yMin, xMax - xMin, yMax - yMin)
+          ctx.rect(
+            boundaries.xMin,
+            boundaries.yMin,
+            boundaries.xMax - boundaries.xMin,
+            boundaries.yMax - boundaries.yMin
+          )
         }
 
         ctx.fill()

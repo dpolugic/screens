@@ -1,5 +1,4 @@
 import {
-  AbsoluteNumber,
   AbsolutePattern,
   AbsolutePoint,
   Boundaries,
@@ -7,7 +6,6 @@ import {
   Pattern,
   PatternNumber,
   Point,
-  RelativeNumber,
   RelativePattern,
   RelativePoint,
   Size,
@@ -16,20 +14,20 @@ import {
   ViewportPoint
 } from './types'
 
-function min<N extends PatternNumber>(a: N, b: N): N {
-  return a < b ? a : b
+export function minPatternNumber<N extends PatternNumber>(a: N, b: N): N {
+  return Math.min(a, b) as N
 }
 
-function max<N extends PatternNumber>(a: N, b: N): N {
-  return a > b ? a : b
+export function maxPatternNumber<N extends PatternNumber>(a: N, b: N): N {
+  return Math.max(a, b) as N
 }
 
 const getBoundariesFromTwoPoints = <N extends PatternNumber>([x1, y1]: Point<N>, [x2, y2]: Point<N>): Boundaries<N> => {
   return {
-    xMin: min(x1, x2),
-    xMax: max(x1, x2),
-    yMin: min(y1, y2),
-    yMax: max(y1, y2),
+    xMin: minPatternNumber(x1, x2),
+    xMax: maxPatternNumber(x1, x2),
+    yMin: minPatternNumber(y1, y2),
+    yMax: maxPatternNumber(y1, y2),
   }
 }
 
@@ -42,9 +40,29 @@ export const normalizePattern = <N extends PatternNumber>(pattern: Pattern<N>): 
   }
 }
 
-export const getBoundariesFromPattern = <N extends PatternNumber>(pattern: Pattern<N>): Boundaries<N>=> {
-  return getBoundariesFromTwoPoints(pattern.anchor, pattern.target)
+/**
+ * This function mutates the boundaries object in place.
+ * 
+ * This is a performance optimization to avoid creating new objects, since this function is called very frequently
+ * during rendering.
+ */
+export function mutateBoundariesFromPattern<N extends PatternNumber>(pattern: Pattern<N>, boundaries: Boundaries<N>): void {
+  const [x1, y1] = pattern.anchor
+  const [x2, y2] = pattern.target
+
+  boundaries.xMin = minPatternNumber(x1, x2)
+  boundaries.xMax = maxPatternNumber(x1, x2)
+  boundaries.yMin = minPatternNumber(y1, y2)
+  boundaries.yMax = maxPatternNumber(y1, y2)
 }
+
+
+export const getBoundariesFromPattern = <N extends PatternNumber>(pattern: Pattern<N>): Boundaries<N>=> {
+  const obj: Boundaries<N> = { xMin: 0 as N, xMax: 0 as N, yMin: 0 as N, yMax: 0 as N }
+  mutateBoundariesFromPattern(pattern, obj)
+  return obj
+}
+
 
 export const pointIsInBoundaries = <N extends PatternNumber>(point: Point<N>, boundaries: Boundaries<N>): boolean => {
   const { xMin, xMax, yMin, yMax } = boundaries
@@ -111,7 +129,7 @@ export function getRelativePatternPosition(pattern: RelativePattern, basePattern
   }
 }
 
-const resolveRelativePointPosition = <N extends RelativeNumber | AbsoluteNumber>(relativePoint: RelativePoint, pattern: Pattern<N>): Point<N> => {
+const resolveRelativePointPosition = <N extends PatternNumber>(relativePoint: RelativePoint, pattern: Pattern<N>): Point<N> => {
   const [x1, y1] = pattern.anchor
   const [x2, y2] = pattern.target
   const [x, y] = relativePoint
@@ -133,7 +151,7 @@ export const getMousePoint = (
   return mapPointFromViewportSpace(mousePosition, getScreenSize(ctx))
 }
 
-export function combinePatterns<ParentNumber extends RelativeNumber | AbsoluteNumber>(parent: Pattern<ParentNumber>, child: RelativePattern): Pattern<ParentNumber> {
+export function combinePatterns<ParentNumber extends PatternNumber>(parent: Pattern<ParentNumber>, child: RelativePattern): Pattern<ParentNumber> {
   return {
     anchor: resolveRelativePointPosition(child.anchor, parent),
     target: resolveRelativePointPosition(child.target, parent),
