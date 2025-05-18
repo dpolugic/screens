@@ -27,7 +27,7 @@ const COLORS = '0123456789abcdef'
 
 const MIN_DEPTH = 3
 const MAX_DEPTH = Infinity
-const MAX_DRAW_CALLS = 1e4 // number of shapes to draw per frame
+const MAX_PREVIEW_DRAW_CALLS = 1e4 // number of shapes to draw per preview frame
 const MAX_DRAW_TIME_MS = 15 // how long to draw a frame in ms
 const MAX_QUEUE_SIZE = 1e6
 const MIN_PATTERN_SIZE = 0.0005 // ignore patterns where either side is smaller than this
@@ -35,11 +35,13 @@ const DEBUG = true as boolean
 
 // -- helper functions
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): ViewportPattern => ({
   anchor: mapPointToViewportSpace(pattern.anchor, screenSize),
   target: mapPointToViewportSpace(pattern.target, screenSize),
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getPatternPoints = <N extends PatternNumber>(
   pattern: Pattern<N>
 ): [Point<N>, Point<N>, Point<N>, Point<N>] => {
@@ -235,16 +237,33 @@ export function* drawFrameIncrementally(
         // Draw screen
         ctx.strokeStyle = COLORS[Math.min(COLORS.length - 1, depth)]!
         ctx.beginPath()
-      
+
+        // Optimization: Only allocate variables once.
+        let xMin: number
+        let yMin: number
+        let xMax: number
+        let yMax: number
+        let x1: number
+        let y1: number
+        let x2: number
+        let y2: number
+
         for (const absolutePattern of patterns) {
-          const viewportPattern = mapPatternToViewportSpace(absolutePattern, screenSize)
-          const [p1, p2, p3, p4] = getPatternPoints(viewportPattern)
-      
-          ctx.moveTo(...p1)
-          ctx.lineTo(...p2)
-          ctx.lineTo(...p3)
-          ctx.lineTo(...p4)
-          ctx.closePath()
+          // Convert to viewport space.
+          x1 = Math.round(absolutePattern.anchor[0] * screenSize[0])
+          y1 = Math.round(absolutePattern.anchor[1] * screenSize[1])
+          x2 = Math.round(absolutePattern.target[0] * screenSize[0])
+          y2 = Math.round(absolutePattern.target[1] * screenSize[1])
+
+          // Get boundaries.
+          // Optimization: Do not use getBoundariesFromPattern because it creates too many objects.
+          xMin = Math.min(x1, x2)
+          yMin = Math.min(y1, y2)
+          xMax = Math.max(x1, x2)
+          yMax = Math.max(y1, y2)
+
+          // Draw rectangle.
+          ctx.rect(xMin, yMin, xMax - xMin, yMax - yMin)
         }
 
         ctx.fill()
@@ -252,8 +271,8 @@ export function* drawFrameIncrementally(
 
         if (iterations === 1) {
           // On the first iteration, draw until passing both MIN_DEPTH and MAX_DRAW_CALLS.
-          // We don't want to use a time-based limit here because it would cause flickering.
-          if (depth > MIN_DEPTH && drawScreenCalls >= MAX_DRAW_CALLS) {
+          // We don't want to use a time-based limit here because it could cause flickering.
+          if (depth > MIN_DEPTH && drawScreenCalls >= MAX_PREVIEW_DRAW_CALLS) {
             break
           }
         } else {
