@@ -91,17 +91,25 @@ type QueueEntry = {
   depth: number
 }
 
+// We'll use a global queue to avoid reallocating it on every preview frame.
+const patternQueue = new Queue<QueueEntry>({
+  initialItems: [],
+  size: MAX_QUEUE_SIZE,
+})
+
 function* generateDrawQueue(state: State): Generator<QueueEntry, void, void> {
   console.log(
     `generateDrawQueue start. Initial screens: ${state.screens.length}, Patterns: ${state.patterns.length}`
   )
 
-  const patternQueue = new Queue<QueueEntry>(
-    state.screens.map(screen => ({
+  patternQueue.clear()
+
+  for (const screen of state.screens) {
+    patternQueue.push({
       currentPattern: screen,
       depth: 0,
-    }))
-  )
+    })
+  }
 
   let iterations = 0
   while (patternQueue.size > 0) {
@@ -127,14 +135,15 @@ function* generateDrawQueue(state: State): Generator<QueueEntry, void, void> {
           currentPattern: virtualScreen,
           depth: entry.depth + 1,
         })
+
+        // Give up if queue becomes too large.
+        if (patternQueue.size >= MAX_QUEUE_SIZE) {
+          console.warn('Maximum queue size reached. Rendering cancelled.')
+          return
+        }
       }
     }
 
-    // Give up if queue becomes too large.
-    if (patternQueue.size > MAX_QUEUE_SIZE) {
-      console.warn('Maximum queue size reached. Rendering cancelled.')
-      return
-    }
   }
 
   console.log(
