@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint ./src --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "find-unused": "ts-unused-exports ./tsconfig.json --showLineNumber",
     "format": "prettier --write ./src",
@@ -22,6 +22,8 @@
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.9",
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.27.0",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "@typescript-eslint/eslint-plugin": "^8.32.1",
