@@ -2,9 +2,20 @@ import {
   combinePatterns,
   getBoundariesFromPattern,
   getScreenSize,
-  mapPointToViewportSpace
+  mapPointToViewportSpace,
 } from './functions'
-import { AbsoluteNumber, AbsolutePattern, Boundaries, Pattern, PatternNumber, Point, Size, State, ViewportPattern } from './types'
+import { Queue } from './queue'
+import {
+  AbsoluteNumber,
+  AbsolutePattern,
+  Boundaries,
+  Pattern,
+  PatternNumber,
+  Point,
+  Size,
+  State,
+  ViewportPattern,
+} from './types'
 
 // -- constants
 
@@ -36,7 +47,9 @@ const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): 
   target: mapPointToViewportSpace(pattern.target, screenSize),
 })
 
-const getPatternPoints = <N extends PatternNumber>(pattern: Pattern<N>): [Point<N>, Point<N>, Point<N>, Point<N>] => {
+const getPatternPoints = <N extends PatternNumber>(
+  pattern: Pattern<N>
+): [Point<N>, Point<N>, Point<N>, Point<N>] => {
   const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
 
   return [
@@ -44,7 +57,7 @@ const getPatternPoints = <N extends PatternNumber>(pattern: Pattern<N>): [Point<
     [xMax, yMin], // top right
     [xMax, yMax], // bottom right
     [xMin, yMax], // bottom left
-  ] 
+  ]
 }
 
 // We'll ignore everything that's a bit outside the viewport.
@@ -54,7 +67,7 @@ const VALID_BOUNDARIES: Boundaries<AbsoluteNumber> = {
   xMax: 1.1 as AbsoluteNumber,
   yMin: -0.1 as AbsoluteNumber,
   yMax: 1.1 as AbsoluteNumber,
-}  
+}
 
 const isValidPattern = (pattern: AbsolutePattern): boolean => {
   const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
@@ -65,8 +78,10 @@ const isValidPattern = (pattern: AbsolutePattern): boolean => {
     yMax - yMin >= MIN_PATTERN_SIZE &&
     // X and Y ranges overlap with the valid boundaries.
     // We will only render patterns if at least one corner is inside the valid boundaries.
-    (xMin <= VALID_BOUNDARIES.xMax && xMax >= VALID_BOUNDARIES.xMin) &&
-    (yMin <= VALID_BOUNDARIES.yMax && yMax >= VALID_BOUNDARIES.yMin)
+    xMin <= VALID_BOUNDARIES.xMax &&
+    xMax >= VALID_BOUNDARIES.xMin &&
+    yMin <= VALID_BOUNDARIES.yMax &&
+    yMax >= VALID_BOUNDARIES.yMin
   )
 }
 
@@ -89,9 +104,7 @@ const drawScreen = (
   const viewportPattern = mapPatternToViewportSpace(absolutePattern, screenSize)
   const [p1, p2, p3, p4] = getPatternPoints(viewportPattern)
 
-  ctx.lineWidth = 1
   ctx.strokeStyle = strokeStyle
-  ctx.fillStyle = 'black'
 
   ctx.beginPath()
   ctx.moveTo(...p1)
@@ -113,11 +126,15 @@ const draw = (
   ctx: CanvasRenderingContext2D,
   state: State,
   globalMutableState: GlobalMutableState,
-  queue: QueueEntry[]
+  queue: Queue<QueueEntry>
 ): void => {
   const screenSize = getScreenSize(ctx)
 
-  while (queue.length > 0) {
+  // Shared styles.
+  ctx.fillStyle = 'black'
+  ctx.lineWidth = 1
+
+  while (queue.size > 0) {
     globalMutableState.queueIterations += 1
     const { currentPattern, depth } = queue.shift()!
 
@@ -139,7 +156,7 @@ const draw = (
       }
     }
 
-    globalMutableState.maxQueueSize = Math.max(globalMutableState.maxQueueSize, queue.length)
+    globalMutableState.maxQueueSize = Math.max(globalMutableState.maxQueueSize, queue.size)
   }
 }
 
@@ -149,30 +166,33 @@ export function* drawFrameIncrementally(
 ): Generator<void, void, void> {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-  const drawQueue = state.screens.map(screen => ({
-    currentPattern: screen,
-    depth: 0,
-  }))
+  const drawQueue = new Queue(
+    state.screens.map(screen => ({
+      currentPattern: screen,
+      depth: 0,
+    }))
+  )
 
-  while (drawQueue.length > 0) {
+  while (drawQueue.size > 0) {
     const globalMutableState: GlobalMutableState = {
       drawScreenCalls: 0,
-      maxQueueSize: drawQueue.length,
+      maxQueueSize: drawQueue.size,
       queueIterations: 0,
     }
 
     const duration = measure(() => {
       draw(ctx, state, globalMutableState, drawQueue)
+      drawQueue.compact()
     })
 
     if (DEBUG) {
       console.log(
-        `drawFrame done in ${duration.toFixed(0)}ms. Queue size: ${drawQueue.length}. ${JSON.stringify(globalMutableState)}.`
+        `drawFrame done in ${duration.toFixed(0)}ms. Queue size: ${drawQueue.size}. ${JSON.stringify(globalMutableState)}.`
       )
     }
 
     // Give up if queue becomes too large.
-    if (drawQueue.length > MAX_QUEUE_SIZE) {
+    if (drawQueue.size > MAX_QUEUE_SIZE) {
       console.warn('Maximum queue size reached. Rendering cancelled.')
       return
     }
