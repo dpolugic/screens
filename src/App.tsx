@@ -155,7 +155,7 @@ function App() {
   return (
     <StyledCanvas
       ref={setCanvasEl}
-      onMouseDown={e => {
+      onPointerDown={e => {
         if (!ctx) return
 
         const mousePoint = getMousePoint(ctx, e)
@@ -166,7 +166,7 @@ function App() {
           clickedPath: findClickedScreenOrPattern(state, mousePoint),
         })
       }}
-      onMouseUp={e => {
+      onPointerUp={e => {
         if (!ctx) return
         if (!draftClick) return
 
@@ -185,7 +185,7 @@ function App() {
 
         setState(prevState => getDraftState(prevState, draftClick, mousePoint))
       }}
-      onMouseMove={e => {
+      onPointerMove={e => {
         if (!ctx) return
 
         mousePositionRef.current = getMousePoint(ctx, e)
