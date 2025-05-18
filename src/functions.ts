@@ -60,7 +60,7 @@ export const mapPointToViewportSpace = (
   [x, y]: AbsolutePoint,
   [viewportWidth, viewportHeight]: Size
 ): ViewportPoint => {
-  return [x * viewportWidth, y * viewportHeight] satisfies NumberPair as ViewportPoint
+  return [Math.round(x * viewportWidth), Math.round(y * viewportHeight)] satisfies NumberPair as ViewportPoint
 }
 
 // ts-unused-exports:disable-next-line

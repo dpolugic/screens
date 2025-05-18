@@ -79,7 +79,7 @@ function App() {
   const [state, setState] = useState<State>(BASE_STATE)
   const [draftClick, setDraftClick] = useState<DraftClick | undefined>(undefined)
 
-  const ctx = useMemo(() => canvasEl?.getContext('2d'), [canvasEl])
+  const ctx = useMemo(() => canvasEl?.getContext('2d', { alpha: false }), [canvasEl])
 
   // Handle viewport size changes
   useEffect(() => {

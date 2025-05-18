@@ -138,12 +138,13 @@ function* generateDrawQueue(state: State): Generator<QueueEntry, void, void> {
 
         // Give up if queue becomes too large.
         if (patternQueue.size >= MAX_QUEUE_SIZE) {
-          console.warn('Maximum queue size reached. Rendering cancelled.')
+          console.log(
+            `Maximum queue size reached. Rendering cancelled. Total iterations: ${iterations}. Final queue size: ${patternQueue.size}`
+          )
           return
         }
       }
     }
-
   }
 
   console.log(
