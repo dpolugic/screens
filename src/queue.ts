@@ -46,6 +46,7 @@ export class Queue<T> {
     }
 
     const value = this.#buffer[this.#head]!
+    this.#buffer[this.#head] = undefined
 
     this.#head = (this.#head + 1) % this.#buffer.length
     this.#size--
