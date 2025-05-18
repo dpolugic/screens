@@ -54,6 +54,33 @@ const patternQueue = new Queue<QueueEntry>({
   size: MAX_QUEUE_SIZE,
 })
 
+const isValidPattern = (() => {
+  // Optimization: Only allocate boundaries object once and mutate it in place.
+  // Make sure to update this object before using it!
+  const patternBoundaries: Boundaries<ViewportNumber> = {
+    xMin: 0 as ViewportNumber,
+    xMax: 0 as ViewportNumber,
+    yMin: 0 as ViewportNumber,
+    yMax: 0 as ViewportNumber,
+  }
+
+  return function (pattern: ViewportPattern, viewportBoundaries: Boundaries<ViewportNumber>): boolean {
+    mutateBoundariesFromPattern(pattern, patternBoundaries)
+
+    return (
+      // Pattern fulfills minimum size.
+      patternBoundaries.xMax - patternBoundaries.xMin >= MIN_PATTERN_SIZE_PX &&
+      patternBoundaries.yMax - patternBoundaries.yMin >= MIN_PATTERN_SIZE_PX &&
+      // X and Y ranges overlap with the valid boundaries.
+      // We will only render patterns if at least one corner is inside the valid boundaries.
+      patternBoundaries.xMin <= viewportBoundaries.xMax &&
+      patternBoundaries.xMax >= viewportBoundaries.xMin &&
+      patternBoundaries.yMin <= viewportBoundaries.yMax &&
+      patternBoundaries.yMax >= viewportBoundaries.yMin
+    )
+  }
+})()
+
 /**
  * Creates a generator that yields drawable patterns one by one.
  *
@@ -87,31 +114,6 @@ function* streamDrawablePatterns({
     })
   }
 
-  // Optimization: Only allocate boundaries object once and mutate it in place.
-  // Make sure to update this object before using it!
-  const patternBoundaries: Boundaries<ViewportNumber> = {
-    xMin: 0 as ViewportNumber,
-    xMax: 0 as ViewportNumber,
-    yMin: 0 as ViewportNumber,
-    yMax: 0 as ViewportNumber,
-  }
-
-  function isValidPattern(pattern: ViewportPattern): boolean {
-    mutateBoundariesFromPattern(pattern, patternBoundaries)
-
-    return (
-      // Pattern fulfills minimum size.
-      patternBoundaries.xMax - patternBoundaries.xMin >= MIN_PATTERN_SIZE_PX &&
-      patternBoundaries.yMax - patternBoundaries.yMin >= MIN_PATTERN_SIZE_PX &&
-      // X and Y ranges overlap with the valid boundaries.
-      // We will only render patterns if at least one corner is inside the valid boundaries.
-      patternBoundaries.xMin <= viewportBoundaries.xMax &&
-      patternBoundaries.xMax >= viewportBoundaries.xMin &&
-      patternBoundaries.yMin <= viewportBoundaries.yMax &&
-      patternBoundaries.yMax >= viewportBoundaries.yMin
-    )
-  }
-
   let iterations = 0
   while (patternQueue.size > 0) {
     iterations += 1
@@ -129,11 +131,12 @@ function* streamDrawablePatterns({
     }
 
     for (const pattern of state.patterns) {
-      const viewportPattern = combinePatterns(entry.currentPattern, pattern)
+      // Get new pattern
+      const newViewportPattern = combinePatterns(entry.currentPattern, pattern)
 
-      if (isValidPattern(viewportPattern)) {
+      if (isValidPattern(newViewportPattern, viewportBoundaries)) {
         patternQueue.push({
-          currentPattern: viewportPattern,
+          currentPattern: newViewportPattern,
           depth: entry.depth + 1,
         })
 

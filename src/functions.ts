@@ -10,43 +10,46 @@ import {
   RelativePoint,
   Size,
   State,
+  ViewportNumber,
   ViewportPattern,
-  ViewportPoint
+  ViewportPoint,
 } from './types'
-
-function minPatternNumber<N extends PatternNumber>(a: N, b: N): N {
-  return Math.min(a, b) as N
-}
-
-function maxPatternNumber<N extends PatternNumber>(a: N, b: N): N {
-  return Math.max(a, b) as N
-}
 
 /**
  * This function mutates the boundaries object in place.
- * 
+ *
  * This is a performance optimization to avoid creating new objects, since this function is called very frequently
  * during rendering.
  */
-export function mutateBoundariesFromPattern<N extends PatternNumber>(pattern: Pattern<N>, boundaries: Boundaries<N>): void {
-  const [x1, y1] = pattern.anchor
-  const [x2, y2] = pattern.target
+export const mutateBoundariesFromPattern = (() => {
+  let x1: PatternNumber
+  let y1: PatternNumber
+  let x2: PatternNumber
+  let y2: PatternNumber
 
-  boundaries.xMin = minPatternNumber(x1, x2)
-  boundaries.xMax = maxPatternNumber(x1, x2)
-  boundaries.yMin = minPatternNumber(y1, y2)
-  boundaries.yMax = maxPatternNumber(y1, y2)
-}
+  return function <N extends PatternNumber>(pattern: Pattern<N>, boundaries: Boundaries<N>): void {
+    x1 = pattern.anchor[0]
+    y1 = pattern.anchor[1]
+    x2 = pattern.target[0]
+    y2 = pattern.target[1]
 
+    boundaries.xMin = Math.min(x1, x2) as N
+    boundaries.xMax = Math.max(x1, x2) as N
+    boundaries.yMin = Math.min(y1, y2) as N
+    boundaries.yMax = Math.max(y1, y2) as N
+  }
+})()
 
-const getBoundariesFromPattern = <N extends PatternNumber>(pattern: Pattern<N>): Boundaries<N>=> {
+const getBoundariesFromPattern = <N extends PatternNumber>(pattern: Pattern<N>): Boundaries<N> => {
   const obj: Boundaries<N> = { xMin: 0 as N, xMax: 0 as N, yMin: 0 as N, yMax: 0 as N }
   mutateBoundariesFromPattern(pattern, obj)
   return obj
 }
 
-
-const pointIsInBoundaries = <N extends PatternNumber>(point: Point<N>, boundaries: Boundaries<N>): boolean => {
+const pointIsInBoundaries = <N extends PatternNumber>(
+  point: Point<N>,
+  boundaries: Boundaries<N>
+): boolean => {
   const { xMin, xMax, yMin, yMax } = boundaries
   const [pointX, pointY] = point
 
@@ -61,9 +64,8 @@ const mapPointToViewportSpace = (
   [x, y]: AbsolutePoint,
   [viewportWidth, viewportHeight]: Size
 ): ViewportPoint => {
-  return [Math.round(x * viewportWidth), Math.round(y * viewportHeight)] satisfies NumberPair as ViewportPoint
+  return [x * viewportWidth, y * viewportHeight] satisfies NumberPair as ViewportPoint
 }
-
 
 // ts-unused-exports:disable-next-line
 export const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): ViewportPattern => ({
@@ -93,7 +95,10 @@ export const mapPointFromViewportSpace = (
   return [x / viewportWidth, y / viewportHeight] satisfies NumberPair as AbsolutePoint
 }
 
-function getRelativePointPosition(point: RelativePoint, pattern: AbsolutePattern | RelativePattern): RelativePoint {
+function getRelativePointPosition(
+  point: RelativePoint,
+  pattern: AbsolutePattern | RelativePattern
+): RelativePoint {
   const [x1, y1] = pattern.anchor
   const [x2, y2] = pattern.target
   const [x, y] = point
@@ -104,22 +109,50 @@ function getRelativePointPosition(point: RelativePoint, pattern: AbsolutePattern
   return [relativeX, relativeY] satisfies NumberPair as RelativePoint
 }
 
-export function getRelativePatternPosition(pattern: RelativePattern, basePattern: AbsolutePattern | RelativePattern): RelativePattern {
+export function getRelativePatternPosition(
+  pattern: RelativePattern,
+  basePattern: AbsolutePattern | RelativePattern
+): RelativePattern {
   return {
     anchor: getRelativePointPosition(pattern.anchor, basePattern),
     target: getRelativePointPosition(pattern.target, basePattern),
   }
 }
 
-const resolveRelativePointPosition = <N extends PatternNumber>(relativePoint: RelativePoint, pattern: Pattern<N>): Point<N> => {
-  const [x1, y1] = pattern.anchor
-  const [x2, y2] = pattern.target
-  const [x, y] = relativePoint
+const resolveRelativePointPositionInPlace = (() => {
+  let x1: PatternNumber
+  let y1: PatternNumber
+  let x2: PatternNumber
+  let y2: PatternNumber
+  let x: PatternNumber
+  let y: PatternNumber
 
-  const resolvedX = x1 + x * (x2 - x1)
-  const resolvedY = y1 + y * (y2 - y1)
+  return function <N extends PatternNumber>(
+    relativePoint: RelativePoint,
+    pattern: Pattern<N>,
+    newPoint: Point<N>
+  ): void {
+    x1 = pattern.anchor[0]
+    y1 = pattern.anchor[1]
+    x2 = pattern.target[0]
+    y2 = pattern.target[1]
+    x = relativePoint[0]
+    y = relativePoint[1]
 
-  return [resolvedX, resolvedY] satisfies NumberPair as Point<N>
+    newPoint[0] = (x1 + x * (x2 - x1)) as N
+    newPoint[1] = (y1 + y * (y2 - y1)) as N
+  }
+})()
+
+const resolveRelativePointPosition = <N extends PatternNumber>(
+  relativePoint: RelativePoint,
+  pattern: Pattern<N>
+): Point<N> => {
+  const newPoint = [0, 0] satisfies NumberPair as Point<N>
+
+  resolveRelativePointPositionInPlace(relativePoint, pattern, newPoint)
+
+  return newPoint
 }
 
 export const getScreenSize = (ctx: CanvasRenderingContext2D): Size => [ctx.canvas.width, ctx.canvas.height]
@@ -133,11 +166,28 @@ export const getMousePoint = (
   return mapPointFromViewportSpace(mousePosition, getScreenSize(ctx))
 }
 
-export function combinePatterns<ParentNumber extends PatternNumber>(parent: Pattern<ParentNumber>, child: RelativePattern): Pattern<ParentNumber> {
+export function combinePatterns<ParentNumber extends PatternNumber>(
+  parent: Pattern<ParentNumber>,
+  child: RelativePattern
+): Pattern<ParentNumber> {
   return {
     anchor: resolveRelativePointPosition(child.anchor, parent),
     target: resolveRelativePointPosition(child.target, parent),
-  } 
+  }
+}
+
+/**
+ * Rounds coordinates of the pattern to the nearest integer. NOTE: Mutates the pattern in place.
+ *
+ * This is a performance optimization to avoid anti-aliasing.
+ */
+// ts-unused-exports:disable-next-line
+export function roundViewportPatternInPlace(pattern: ViewportPattern): ViewportPattern {
+  pattern.anchor[0] = Math.round(pattern.anchor[0]) as ViewportNumber
+  pattern.anchor[1] = Math.round(pattern.anchor[1]) as ViewportNumber
+  pattern.target[0] = Math.round(pattern.target[0]) as ViewportNumber
+  pattern.target[1] = Math.round(pattern.target[1]) as ViewportNumber
+  return pattern
 }
 
 type NestedPath = number[]
