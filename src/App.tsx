@@ -22,7 +22,7 @@ const getDraftState = (state: State, draftClick: DraftClick, mousePosition: Abso
   const draftPattern = {
     anchor: draftClick.anchor,
     target: mousePosition,
-  } 
+  }
 
   if (draftClick.clickedPath === undefined) {
     // create top-level screen
@@ -31,7 +31,6 @@ const getDraftState = (state: State, draftClick: DraftClick, mousePosition: Abso
 
   // if draft origin is inside existing screen, add a pattern instead
   const { screenIndex, nestedPath } = draftClick.clickedPath
-
 
   // Re-interpret as relative pattern.
   const draftPatternRelative = draftPattern satisfies AbsolutePattern as unknown as RelativePattern

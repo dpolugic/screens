@@ -10,15 +10,17 @@ import { Boundaries, Size, State, ViewportNumber, ViewportPattern } from './type
 // -- constants
 
 const COLOR_SIZE = 50
-const COLORS = Array(COLOR_SIZE).fill(undefined).map((_, i) => {
-  const frac = i / COLOR_SIZE
+const COLORS = Array(COLOR_SIZE)
+  .fill(undefined)
+  .map((_, i) => {
+    const frac = i / COLOR_SIZE
 
-  const hue = (80 + 360 * frac) % 360
-  const saturation = 50 + (frac * 30)
-  const lightness = 60
+    const hue = (80 + 360 * frac) % 360
+    const saturation = 50 + frac * 30
+    const lightness = 60
 
-  return `hsl(${hue} ${saturation}% ${lightness}%)`
-})
+    return `hsl(${hue} ${saturation}% ${lightness}%)`
+  })
 
 const MIN_DEPTH = 3
 const MAX_DEPTH = Infinity
@@ -206,13 +208,13 @@ function* streamBatchedDrawablePatterns({
     } else {
       chunk.patterns.push(entry.currentPattern)
 
-    if (chunk.patterns.length >= chunkSize) {
-      yield chunk
-      chunk = {
-        depth: entry.depth,
-        patterns: [],
+      if (chunk.patterns.length >= chunkSize) {
+        yield chunk
+        chunk = {
+          depth: entry.depth,
+          patterns: [],
+        }
       }
-    }
     }
   }
 

@@ -1,13 +1,10 @@
-
 type Brand<T, B extends string> = T & { readonly __brand: B }
-
 
 // ts-unused-exports:disable-next-line
 export type RelativeNumber = Brand<number, 'RelativeNumber'>
 // ts-unused-exports:disable-next-line
 export type AbsoluteNumber = Brand<number, 'AbsoluteNumber'>
 export type ViewportNumber = Brand<number, 'ViewportNumber'>
-
 
 export type PatternNumber = RelativeNumber | AbsoluteNumber | ViewportNumber
 
@@ -42,7 +39,6 @@ export type AbsolutePattern = Pattern<AbsoluteNumber>
 
 // represents a pattern in viewport coordinates.
 export type ViewportPattern = Pattern<ViewportNumber>
-
 
 export type Boundaries<N extends PatternNumber> = {
   xMin: N

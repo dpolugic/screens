@@ -7,7 +7,7 @@ export class Queue<T> {
   private tail = 0
   private _size = 0
 
-  constructor({initialItems = [], size}: { initialItems?: T[], size: number}) {
+  constructor({ initialItems = [], size }: { initialItems?: T[]; size: number }) {
     if (size <= 0) {
       throw new Error('Queue size must be positive')
     }
@@ -18,7 +18,7 @@ export class Queue<T> {
 
     this.buffer = new Array(size).fill(undefined)
 
-    for (let i = 0; i< initialItems.length; i++) {
+    for (let i = 0; i < initialItems.length; i++) {
       this.buffer[i] = initialItems[i]
     }
 
