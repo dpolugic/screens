@@ -188,19 +188,7 @@ function* streamBatchedDrawablePatterns({
     patterns: [],
   }
 
-  while (true) {
-    const iteratorResult = drawQueueIterator.next()
-
-    if (iteratorResult.done) {
-      if (chunk.patterns.length > 0) {
-        yield chunk
-      }
-
-      break
-    }
-
-    const entry = iteratorResult.value
-
+  for (const entry of drawQueueIterator) {
     if (chunk.depth !== entry.depth) {
       if (chunk.patterns.length > 0) {
         yield chunk
@@ -212,7 +200,6 @@ function* streamBatchedDrawablePatterns({
       }
     } else {
       chunk.patterns.push(entry.currentPattern)
-    }
 
     if (chunk.patterns.length >= chunkSize) {
       yield chunk
@@ -221,6 +208,11 @@ function* streamBatchedDrawablePatterns({
         patterns: [],
       }
     }
+    }
+  }
+
+  if (chunk.patterns.length > 0) {
+    yield chunk
   }
 }
 
