@@ -9,11 +9,16 @@ import { Boundaries, Size, State, ViewportNumber, ViewportPattern } from './type
 
 // -- constants
 
-// todo: handle colors in a better way
-const COLORS = '0123456789abcdef'
-  .split('')
-  .reverse()
-  .map(a => `#fa${a}`)
+const COLOR_SIZE = 50
+const COLORS = Array(COLOR_SIZE).fill(undefined).map((_, i) => {
+  const frac = i / COLOR_SIZE
+
+  const hue = (80 + 360 * frac) % 360
+  const saturation = 50 + (frac * 30)
+  const lightness = 60
+
+  return `hsl(${hue} ${saturation}% ${lightness}%)`
+})
 
 const MIN_DEPTH = 3
 const MAX_DEPTH = Infinity
