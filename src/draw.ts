@@ -32,14 +32,6 @@ const MAX_QUEUE_SIZE = 1e6
 const MIN_PATTERN_SIZE = 0.0005 // ignore patterns where either side is smaller than this
 const DEBUG = true as boolean
 
-// -- hacky global state
-
-type GlobalMutableState = {
-  drawScreenCalls: number
-  maxQueueSize: number
-  queueIterations: number
-}
-
 // -- helper functions
 
 const mapPatternToViewportSpace = (pattern: AbsolutePattern, screenSize: Size): ViewportPattern => ({
@@ -122,42 +114,51 @@ type QueueEntry = {
   depth: number
 }
 
-const draw = (
-  ctx: CanvasRenderingContext2D,
-  state: State,
-  globalMutableState: GlobalMutableState,
-  queue: Queue<QueueEntry>
-): void => {
-  const screenSize = getScreenSize(ctx)
+function* generateDrawQueue(state: State): Generator<QueueEntry, void, void> {
+  console.log(
+    `generateDrawQueue start. Initial screens: ${state.screens.length}, Patterns: ${state.patterns.length}`
+  )
 
-  // Shared styles.
-  ctx.fillStyle = 'black'
-  ctx.lineWidth = 1
+  const patternQueue = new Queue<QueueEntry>(
+    state.screens.map(screen => ({
+      currentPattern: screen,
+      depth: 0,
+    }))
+  )
 
-  while (queue.size > 0) {
-    globalMutableState.queueIterations += 1
-    const { currentPattern, depth } = queue.shift()!
+  let iterations = 0
+  while (patternQueue.size > 0) {
+    iterations += 1
 
-    if (depth > MAX_DEPTH) break
-    // Always render to MIN_DEPTH even if the draw call budget is empty
-    if (depth > MIN_DEPTH && globalMutableState.drawScreenCalls >= MAX_DRAW_CALLS) break
+    const entry = patternQueue.shift()
 
-    globalMutableState.drawScreenCalls += 1
-    drawScreen(ctx, screenSize, currentPattern, COLORS[Math.min(COLORS.length - 1, depth)]!)
+    yield entry
+
+    // Don't add patterns that are too deep.
+    if (entry.depth >= MAX_DEPTH) {
+      console.log(`MAX_DEPTH (${MAX_DEPTH}) reached at depth ${entry.depth}. Breaking from generateDrawQueue loop.`)
+      break
+    }
 
     for (const pattern of state.patterns) {
-      const virtualScreen = combinePatterns(currentPattern, pattern)
+      const virtualScreen = combinePatterns(entry.currentPattern, pattern)
 
       if (isValidPattern(virtualScreen)) {
-        queue.push({
+        patternQueue.push({
           currentPattern: virtualScreen,
-          depth: depth + 1,
+          depth: entry.depth + 1,
         })
       }
     }
 
-    globalMutableState.maxQueueSize = Math.max(globalMutableState.maxQueueSize, queue.size)
+    // Give up if queue becomes too large.
+    if (patternQueue.size > MAX_QUEUE_SIZE) {
+      console.warn('Maximum queue size reached. Rendering cancelled.')
+      return
+    }
   }
+
+  console.log(`generateDrawQueue done. Total iterations: ${iterations}. Final queue size: ${patternQueue.size}`)
 }
 
 export function* drawFrameIncrementally(
@@ -165,36 +166,40 @@ export function* drawFrameIncrementally(
   state: State
 ): Generator<void, void, void> {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+  ctx.fillStyle = 'black'
+  ctx.lineWidth = 1
+  
+  const screenSize = getScreenSize(ctx)
 
-  const drawQueue = new Queue(
-    state.screens.map(screen => ({
-      currentPattern: screen,
-      depth: 0,
-    }))
-  )
+  const drawQueueIterator = generateDrawQueue(state)
 
-  while (drawQueue.size > 0) {
-    const globalMutableState: GlobalMutableState = {
-      drawScreenCalls: 0,
-      maxQueueSize: drawQueue.size,
-      queueIterations: 0,
-    }
+  while (true) {
+    let drawScreenCalls = 0
 
     const duration = measure(() => {
-      draw(ctx, state, globalMutableState, drawQueue)
-      drawQueue.compact()
+      // Manual iteration
+      while (true) {
+        const iteratorResult = drawQueueIterator.next()
+
+        if (iteratorResult.done) break
+
+        const { currentPattern, depth } = iteratorResult.value
+
+        drawScreenCalls += 1
+
+        drawScreen(ctx, screenSize, currentPattern, COLORS[Math.min(COLORS.length - 1, depth)]!)
+
+        if (depth > MIN_DEPTH && drawScreenCalls >= MAX_DRAW_CALLS) break
+      }
     })
 
     if (DEBUG) {
-      console.log(
-        `drawFrame done in ${duration.toFixed(0)}ms. Queue size: ${drawQueue.size}. ${JSON.stringify(globalMutableState)}.`
-      )
+      console.log(`drawFrame done in ${duration.toFixed(0)}ms. Drew ${drawScreenCalls} screens.`)
     }
 
-    // Give up if queue becomes too large.
-    if (drawQueue.size > MAX_QUEUE_SIZE) {
-      console.warn('Maximum queue size reached. Rendering cancelled.')
-      return
+    if (drawScreenCalls === 0) {
+      console.log('No screens to draw. Exiting.')
+      break
     }
 
     yield
