@@ -146,7 +146,7 @@ function App() {
 
   return (
     <canvas
-      className="w-full h-full"
+      className='w-full h-full'
       ref={setCanvasEl}
       onPointerDown={e => {
         if (!ctx) return
