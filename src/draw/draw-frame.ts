@@ -1,5 +1,5 @@
 import { getScreenSize, mutateBoundariesFromPattern } from '../functions'
-import { Boundaries, State, ViewportNumber } from '../types'
+import { Boundaries, State, ViewportNumber, ViewportPattern } from '../types'
 import { COLORS, DEBUG, MAX_DRAW_TIME_MS, MAX_PREVIEW_DRAW_CALLS, MIN_DEPTH } from './constants'
 import PatternWorker from './patterns.worker?worker'
 import { streamBatchedDrawablePatterns } from './stream-batched-drawable-patterns'
@@ -18,6 +18,28 @@ const measure = (f: () => void): number => {
 
   return performance.now() - start
 }
+
+const drawRectangleFromPattern = (() => {
+  // Optimization: Only allocate boundaries object once and mutate it in place.
+  const boundaries: Boundaries<ViewportNumber> = {
+    xMin: 0 as ViewportNumber,
+    xMax: 0 as ViewportNumber,
+    yMin: 0 as ViewportNumber,
+    yMax: 0 as ViewportNumber,
+  }
+
+  return function (ctx: CanvasRenderingContext2D, viewportPattern: ViewportPattern) {
+    mutateBoundariesFromPattern(viewportPattern, boundaries)
+
+    // Draw rectangle.
+    ctx.rect(
+      boundaries.xMin,
+      boundaries.yMin,
+      boundaries.xMax - boundaries.xMin,
+      boundaries.yMax - boundaries.yMin
+    )
+  }
+})()
 
 export function* drawFrameIncrementally(
   ctx: CanvasRenderingContext2D,
@@ -54,24 +76,8 @@ export function* drawFrameIncrementally(
         ctx.strokeStyle = COLORS[Math.min(COLORS.length - 1, depth)]!
         ctx.beginPath()
 
-        // Optimization: Only allocate boundaries object once and mutate it in place.
-        const boundaries: Boundaries<ViewportNumber> = {
-          xMin: 0 as ViewportNumber,
-          xMax: 0 as ViewportNumber,
-          yMin: 0 as ViewportNumber,
-          yMax: 0 as ViewportNumber,
-        }
-
         for (const viewportPattern of patterns) {
-          mutateBoundariesFromPattern(viewportPattern, boundaries)
-
-          // Draw rectangle.
-          ctx.rect(
-            boundaries.xMin,
-            boundaries.yMin,
-            boundaries.xMax - boundaries.xMin,
-            boundaries.yMax - boundaries.yMin
-          )
+          drawRectangleFromPattern(ctx, viewportPattern)
         }
 
         ctx.fill()

@@ -53,8 +53,6 @@ const isValidPattern = (() => {
   }
 })()
 
-
-
 /**
  * Creates a generator that yields drawable patterns one by one.
  *
