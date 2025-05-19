@@ -1,7 +1,7 @@
 import { Size, State, ViewportPattern } from '../types'
 import { streamDrawablePatterns } from './stream-drawable-patterns'
 
-export type DrawableChunk = {
+type DrawableChunk = {
   depth: number
   patterns: ViewportPattern[]
 }

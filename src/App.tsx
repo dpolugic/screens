@@ -8,7 +8,7 @@ import {
   getRelativePatternPosition,
 } from './functions'
 import { useStableFunction } from './hooks'
-import { AbsolutePattern, AbsolutePoint, RelativePattern, State, asAbsolutePoint } from './types'
+import { AbsolutePattern, AbsolutePoint, NumberPair, RelativePattern, State } from './types'
 
 const getDraftState = (state: State, draftClick: DraftClick, mousePosition: AbsolutePoint): State => {
   const draftPattern = {
@@ -52,7 +52,7 @@ const useOnKeydown = (f: (e: KeyboardEvent) => void) => {
   }, [stableCallback])
 }
 
-const BASE_MOUSE_POSITION = asAbsolutePoint([0, 0])
+const BASE_MOUSE_POSITION = [0, 0] satisfies NumberPair as AbsolutePoint
 
 const BASE_STATE = {
   screens: [],

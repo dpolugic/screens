@@ -22,8 +22,6 @@ export type AbsolutePoint = Point<AbsoluteNumber>
 // absolute point in viewport space
 export type ViewportPoint = Point<ViewportNumber>
 
-export const asAbsolutePoint = (point: NumberPair): AbsolutePoint => point as AbsolutePoint
-
 export type Size = [width: number, height: number]
 
 export type Pattern<N extends PatternNumber> = {
