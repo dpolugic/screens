@@ -1,7 +1,13 @@
+/** Rendering is aborted if the queue size exceeds this. */
 export const MAX_QUEUE_SIZE = 1e6
-// const MIN_PATTERN_SIZE = 0.0005 // ignore patterns where either side is smaller than this
-export const MIN_PATTERN_SIZE_PX = 1 // ignore patterns where either side is smaller than this// -- constants
+
+/** Ignore patterns where either side is smaller than this. */
+export const MIN_PATTERN_SIZE_PX = 1
+
+/** Number of colors to use. */
 const COLOR_SIZE = 50
+
+/** Colors to use. Depths past `COLOR_SIZE` use the last color in the array. */
 export const COLORS = Array(COLOR_SIZE)
   .fill(undefined)
   .map((_, i) => {
@@ -13,8 +19,18 @@ export const COLORS = Array(COLOR_SIZE)
 
     return `hsl(${hue} ${saturation}% ${lightness}%)`
   })
+
+/** Always render to at least this depth in the initial frame. */
 export const MIN_DEPTH = 3
+
+/** Never render past this depth. `Infinity` means no limit. */
 export const MAX_DEPTH = Infinity
-export const MAX_PREVIEW_DRAW_CALLS = 5e3 // number of shapes to draw per preview frame
-export const MAX_DRAW_TIME_MS = 15 // how long to draw a frame in ms
+
+/** Maximum number of draw calls per preview frame. */
+export const MAX_PREVIEW_DRAW_CALLS = 5e3
+
+/** Maximum time to draw a frame in ms. */
+export const MAX_DRAW_TIME_MS = 15
+
+/** Whether to enable debug logging. */
 export const DEBUG = true as boolean
