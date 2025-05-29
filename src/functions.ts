@@ -40,7 +40,7 @@ export const mutateBoundariesFromPattern = (() => {
   }
 })()
 
-const getBoundariesFromPattern = <N extends PatternNumber>(pattern: Pattern<N>): Boundaries<N> => {
+export const getBoundariesFromPattern = <N extends PatternNumber>(pattern: Pattern<N>): Boundaries<N> => {
   const obj: Boundaries<N> = { xMin: 0 as N, xMax: 0 as N, yMin: 0 as N, yMax: 0 as N }
   mutateBoundariesFromPattern(pattern, obj)
   return obj
@@ -161,7 +161,11 @@ export const getMousePoint = (
   ctx: CanvasRenderingContext2D,
   mouseEvent: React.MouseEvent<HTMLCanvasElement, MouseEvent>
 ): AbsolutePoint => {
-  const mousePosition = [mouseEvent.clientX, mouseEvent.clientY] satisfies NumberPair as ViewportPoint
+  const canvasRect = ctx.canvas.getBoundingClientRect()
+  const mousePosition = [
+    mouseEvent.clientX - canvasRect.x,
+    mouseEvent.clientY - canvasRect.y,
+  ] satisfies NumberPair as ViewportPoint
 
   return mapPointFromViewportSpace(mousePosition, getScreenSize(ctx))
 }

@@ -8,6 +8,7 @@ import {
   getRelativePatternPosition,
 } from './functions'
 import { useStableFunction } from './hooks'
+import { Preview } from './preview'
 import { AbsolutePattern, AbsolutePoint, NumberPair, RelativePattern, State } from './types'
 
 const getDraftState = (state: State, draftClick: DraftClick, mousePosition: AbsolutePoint): State => {
@@ -59,7 +60,23 @@ const BASE_STATE = {
   patterns: [],
 }
 
+const PreviewButton: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({
+  onClick,
+  children,
+}) => {
+  return (
+    <button
+      className='text-amber-300 hover:text-black cursor-pointer p-2 hover:bg-amber-300'
+      type='button'
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  )
+}
+
 function App() {
+  const [previewOpen, setPreviewOpen] = useState(false)
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
   const mousePositionRef = useRef<AbsolutePoint>(BASE_MOUSE_POSITION)
 
@@ -145,45 +162,75 @@ function App() {
   }, [draftClick, state, resizeCount, ctx])
 
   return (
-    <canvas
-      className='w-full h-full'
-      ref={setCanvasEl}
-      onPointerDown={e => {
-        if (!ctx) return
+    <div className='size-full flex'>
+      {previewOpen ? (
+        <div className='flex-1/3 border-r-amber-300 border-r-1'>
+          <div className='flex gap-2 items-center justify-between'>
+            <h2 className='text-amber-300'>preview (wip)</h2>
+            <PreviewButton onClick={() => setPreviewOpen(false)}>x</PreviewButton>
+          </div>
+          <Preview state={state} />
+        </div>
+      ) : (
+        <div className=' border-r-amber-300 border-r-1'>
+          <PreviewButton onClick={() => setPreviewOpen(true)}>&gt;</PreviewButton>
+        </div>
+      )}
+      <div className='flex-2/3'>
+        <canvas
+          className='size-full'
+          ref={setCanvasEl}
+          onPointerDown={e => {
+            if (!ctx) return
 
-        const mousePoint = getMousePoint(ctx, e)
+            const mousePoint = getMousePoint(ctx, e)
 
-        // create draft screen based on current cursor position
-        setDraftClick({
-          anchor: mousePoint,
-          clickedPath: findClickedScreenOrPattern(state, mousePoint),
-        })
-      }}
-      onPointerUp={e => {
-        if (!ctx) return
-        if (!draftClick) return
+            console.log(
+              'pointerdown',
+              e.clientX,
+              e.width,
+              e.pageX,
+              e.screenX,
+              e.movementX,
+              ctx.canvas.width,
+              ctx.canvas.clientWidth,
+              e,
+              getMousePoint(ctx, e)
+            )
 
-        // reset origin. note: this is async so we can still use the value below.
-        setDraftClick(undefined)
+            // create draft screen based on current cursor position
+            setDraftClick({
+              anchor: mousePoint,
+              clickedPath: findClickedScreenOrPattern(state, mousePoint),
+            })
+          }}
+          onPointerUp={e => {
+            if (!ctx) return
+            if (!draftClick) return
 
-        const mousePoint = getMousePoint(ctx, e)
+            // reset origin. note: this is async so we can still use the value below.
+            setDraftClick(undefined)
 
-        const [x1, y1] = draftClick.anchor
-        const [x2, y2] = mousePoint
+            const mousePoint = getMousePoint(ctx, e)
 
-        // validate size, ignore drawings that are too small (arbitrary)
-        // todo: convert to viewport size and check pixels
-        if (Math.abs(x2 - x1) < 0.01) return
-        if (Math.abs(y2 - y1) < 0.01) return
+            const [x1, y1] = draftClick.anchor
+            const [x2, y2] = mousePoint
 
-        setState(prevState => getDraftState(prevState, draftClick, mousePoint))
-      }}
-      onPointerMove={e => {
-        if (!ctx) return
+            // validate size, ignore drawings that are too small (arbitrary)
+            // todo: convert to viewport size and check pixels
+            if (Math.abs(x2 - x1) < 0.01) return
+            if (Math.abs(y2 - y1) < 0.01) return
 
-        mousePositionRef.current = getMousePoint(ctx, e)
-      }}
-    />
+            setState(prevState => getDraftState(prevState, draftClick, mousePoint))
+          }}
+          onPointerMove={e => {
+            if (!ctx) return
+
+            mousePositionRef.current = getMousePoint(ctx, e)
+          }}
+        />
+      </div>
+    </div>
   )
 }
 
