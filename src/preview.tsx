@@ -34,7 +34,7 @@ export const Preview: React.FC<{ state: State }> = ({ state }) => {
           className='stroke-amber-100'
           vectorEffect='non-scaling-stroke'
           fill='none'
-          strokeWidth='1px'
+          strokeWidth='2px'
           x={0}
           y={0}
           width={1}
