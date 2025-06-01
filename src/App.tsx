@@ -66,7 +66,7 @@ const PreviewButton: React.FC<{ onClick: () => void; children: React.ReactNode }
 }) => {
   return (
     <button
-      className='text-amber-300 hover:text-black cursor-pointer p-2 hover:bg-amber-300'
+      className='text-amber-300 hover:text-black cursor-pointer p-2 hover:bg-amber-300 font-mono'
       type='button'
       onClick={onClick}
     >
@@ -167,9 +167,9 @@ function App() {
     <div className='size-full flex'>
       {previewOpen ? (
         <div className='flex-1/3 border-r-amber-300 border-r-1'>
-          <div className='flex gap-2 items-center justify-between'>
-            <h2 className='text-amber-300'>preview (wip)</h2>
+          <div className='flex gap-2 items-center justify-between pr-2 border-b-amber-300 border-b-1'>
             <PreviewButton onClick={() => setPreviewOpen(false)}>x</PreviewButton>
+            <h2 className='text-amber-300'>preview (wip)</h2>
           </div>
           <Preview state={state} />
         </div>

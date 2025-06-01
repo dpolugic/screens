@@ -29,7 +29,7 @@ function getViewBox(state: State): string {
 
 export const Preview: React.FC<{ state: State }> = ({ state }) => {
   return (
-    <div className='border-1 border-amber-300 aspect-square'>
+    <div className='border-b-1 border-amber-300 aspect-square'>
       <svg viewBox={getViewBox(state)} xmlns='http://www.w3.org/2000/svg' className='w-full aspect-square'>
         <rect
           className='stroke-amber-100'
