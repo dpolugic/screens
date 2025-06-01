@@ -78,6 +78,8 @@ export type Boundaries<N extends PatternNumber> = {
 // --- State ---
 // ---
 
+export type PatternId = Brand<string, 'PatternId'>
+
 /** This defines what is drawn on the screen. */
 export type State = {
   /** These are root-level patterns. */
@@ -85,7 +87,7 @@ export type State = {
 
   /** These are nested patterns. They are applied recursively to root-level patterns.*/
   patterns: {
-    id: string
+    id: PatternId
     pattern: RelativePattern
   }[]
 }

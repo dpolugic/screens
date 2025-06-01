@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { useMemo, useState } from 'react'
 import { getBoundariesFromPattern } from './functions'
-import { NumberPair, State } from './types'
+import { NumberPair, PatternId, RelativePattern, RelativePoint, State } from './types'
 
-function getViewBox(state: State): string {
+function getViewBox(state: State): { x: number; y: number; width: number; height: number } {
   let xMin = 0
   let xMax = 1
   let yMin = 0
@@ -24,7 +24,15 @@ function getViewBox(state: State): string {
   yMin -= 0.1
   yMax += 0.1
 
-  return `${xMin} ${yMin} ${xMax - xMin} ${yMax - yMin}`
+  return { x: xMin, y: yMin, width: xMax - xMin, height: yMax - yMin }
+}
+
+function isMirroredX(pattern: RelativePattern): boolean {
+  return pattern.anchor[0] > pattern.target[0]
+}
+
+function isMirroredY(pattern: RelativePattern): boolean {
+  return pattern.anchor[1] > pattern.target[1]
 }
 
 function lerp(a: number, b: number, k: number): number {
@@ -55,10 +63,162 @@ const PartialLine: React.FC<{ anchor: NumberPair; target: NumberPair }> = ({ anc
   )
 }
 
-export const Preview: React.FC<{ state: State }> = ({ state }) => {
+type Corner = 'top-left' | 'top-right' | 'bottom-right' | 'bottom-left'
+
+export const Preview: React.FC<{
+  state: State
+  updatePattern: (id: PatternId, pattern: RelativePattern) => void
+}> = ({ state: _state, updatePattern }) => {
+  const [svgEl, setSvgEl] = useState<SVGSVGElement | null>(null)
+  const [resizeState, setResizeState] = useState<
+    | {
+        id: PatternId
+        initialPattern: RelativePattern
+        pattern: RelativePattern
+        corner: Corner
+        initialMouseViewportX: number
+        initialMouseViewportY: number
+      }
+    | undefined
+  >(undefined)
+
+  const state = useMemo(() => {
+    if (resizeState === undefined) {
+      return _state
+    }
+
+    const { id, pattern } = resizeState
+
+    const prev = _state.patterns.find(p => p.id === id)
+
+    if (!prev) {
+      throw new Error(`Pattern with id ${id} not found`)
+    }
+
+    return {
+      ..._state,
+      patterns: _state.patterns.map(p => (p.id === id ? { ...p, pattern } : p)),
+    }
+  }, [_state, resizeState])
+
+  const viewBox = getViewBox(_state)
+
   return (
     <div className='border-b-1 border-amber-300 aspect-square'>
-      <svg viewBox={getViewBox(state)} xmlns='http://www.w3.org/2000/svg' className='w-full aspect-square'>
+      <svg
+        ref={setSvgEl}
+        viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
+        xmlns='http://www.w3.org/2000/svg'
+        className='w-full aspect-square'
+        onPointerMove={e => {
+          e.preventDefault()
+
+          if (svgEl === null || resizeState === undefined) {
+            return
+          }
+
+          const { initialPattern, initialMouseViewportX, initialMouseViewportY, corner } = resizeState
+
+          const { width: svgWidth, height: svgHeight } = svgEl.getBoundingClientRect()
+          const { clientX: mouseViewportX, clientY: mouseViewportY } = e
+
+          // Calculate movement delta in viewport coordinates
+          const viewportDeltaX = mouseViewportX - initialMouseViewportX
+          const viewportDeltaY = mouseViewportY - initialMouseViewportY
+
+          // Convert viewport delta to SVG coordinate delta
+          const svgDeltaX = (viewportDeltaX / svgWidth) * viewBox.width
+          const svgDeltaY = (viewportDeltaY / svgHeight) * viewBox.height
+
+          let {
+            xMin,
+            xMax,
+            yMin,
+            yMax,
+          }: {
+            xMin: number
+            xMax: number
+            yMin: number
+            yMax: number
+          } = getBoundariesFromPattern(initialPattern)
+
+          if (corner === 'top-left') {
+            // Dragging top-left, bottom-right is fixed
+            xMin += svgDeltaX
+            yMin += svgDeltaY
+          } else if (corner === 'top-right') {
+            // Dragging top-right, bottom-left is fixed
+            xMax += svgDeltaX
+            yMin += svgDeltaY
+          } else if (corner === 'bottom-right') {
+            // Dragging bottom-right, top-left is fixed
+            xMax += svgDeltaX
+            yMax += svgDeltaY
+          } else {
+            // Dragging bottom-left, top-right is fixed
+            xMin += svgDeltaX
+            yMax += svgDeltaY
+          }
+
+          // Calculate new anchor and target based on their relative positions in the new box
+          const newPattern: RelativePattern = {
+            anchor: [xMin, yMin] satisfies NumberPair as RelativePoint,
+            target: [xMax, yMax] satisfies NumberPair as RelativePoint,
+          }
+
+          // Mirror X if mirrored in the initial pattern
+          if (isMirroredX(initialPattern)) {
+            ;[newPattern.anchor[0], newPattern.target[0]] = [newPattern.target[0], newPattern.anchor[0]]
+          }
+
+          // Mirror Y if mirrored in the initial pattern
+          if (isMirroredY(initialPattern)) {
+            ;[newPattern.anchor[1], newPattern.target[1]] = [newPattern.target[1], newPattern.anchor[1]]
+          }
+
+          setResizeState(prev =>
+            prev === undefined
+              ? undefined
+              : {
+                  ...prev,
+                  pattern: newPattern,
+                }
+          )
+        }}
+        onPointerUp={e => {
+          e.preventDefault()
+
+          if (resizeState !== undefined) {
+            const { id, pattern: newPattern } = resizeState
+
+            if (
+              newPattern.anchor[0] === newPattern.target[0] ||
+              newPattern.anchor[1] === newPattern.target[1]
+            ) {
+              console.error('Anchor and target cannot be the same')
+            } else {
+              updatePattern(id, newPattern)
+            }
+          }
+
+          setResizeState(undefined)
+        }}
+        onPointerLeave={e => {
+          e.preventDefault()
+
+          setResizeState(undefined)
+        }}
+        onPointerCancel={e => {
+          e.preventDefault()
+
+          setResizeState(undefined)
+        }}
+        // onPointerOut={e => {
+        //   e.preventDefault()
+
+        //   setResizeState(undefined)
+        // }}
+      >
         <rect
           className='stroke-amber-100'
           vectorEffect='non-scaling-stroke'
@@ -71,14 +231,14 @@ export const Preview: React.FC<{ state: State }> = ({ state }) => {
         />
         <PartialLine anchor={[0, 0]} target={[1, 1]} />
 
-        {state.patterns.map(({ pattern }, i) => {
+        {state.patterns.map(({ id, pattern }) => {
           const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
 
           const width = xMax - xMin
           const height = yMax - yMin
 
           return (
-            <React.Fragment key={i}>
+            <React.Fragment key={id}>
               <rect
                 className='stroke-amber-100'
                 vectorEffect='non-scaling-stroke'
@@ -93,17 +253,19 @@ export const Preview: React.FC<{ state: State }> = ({ state }) => {
               <PartialLine anchor={pattern.anchor} target={pattern.target} />
 
               {/* Click surfaces for rotation and resizing actions */}
-              {[
-                // top left
-                { x: xMin, y: yMin, rotation: 0 },
-                // top right
-                { x: xMax, y: yMin, rotation: 90 },
-                // bottom right
-                { x: xMax, y: yMax, rotation: 180 },
-                // bottom left
-                { x: xMin, y: yMax, rotation: 270 },
-              ].map(({ x, y, rotation }, j) => {
-                const r_handle = 0.05 // Radius of the handle
+              {(
+                [
+                  // top left
+                  { x: xMin, y: yMin, rotation: 0, corner: 'top-left' },
+                  // top right
+                  { x: xMax, y: yMin, rotation: 90, corner: 'top-right' },
+                  // bottom right
+                  { x: xMax, y: yMax, rotation: 180, corner: 'bottom-right' },
+                  // bottom left
+                  { x: xMin, y: yMax, rotation: 270, corner: 'bottom-left' },
+                ] as const
+              ).map(({ x, y, rotation, corner }) => {
+                const r_handle = 0.07 // Radius of the handle
 
                 // Define the base handle shape (for top-left corner)
                 // This creates a quarter-circle arc pointing outward from the corner
@@ -111,10 +273,29 @@ export const Preview: React.FC<{ state: State }> = ({ state }) => {
 
                 return (
                   <g
-                    key={`corner-handle-${i}-${j}`}
+                    key={`corner-handle-${id}-${corner}`}
                     transform={`translate(${x.toFixed(3)}, ${y.toFixed(3)}) rotate(${rotation})`}
+                    onPointerDown={e => {
+                      e.preventDefault()
+
+                      setResizeState({
+                        id,
+                        initialPattern: pattern,
+                        pattern,
+                        corner,
+                        initialMouseViewportX: e.clientX,
+                        initialMouseViewportY: e.clientY,
+                      })
+                    }}
                   >
-                    <path d={basePathD} className='fill-slate-400 hover:fill-blue-600 cursor-grab' />
+                    <path
+                      d={basePathD}
+                      className={
+                        'fill-slate-400 hover:fill-blue-600 cursor-grab' +
+                        // Force hover color while dragging.
+                        (resizeState?.id === id && resizeState?.corner === corner ? ' fill-blue-600!' : '')
+                      }
+                    />
                   </g>
                 )
               })}

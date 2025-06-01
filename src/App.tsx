@@ -10,7 +10,7 @@ import {
 } from './functions'
 import { useStableFunction } from './hooks'
 import { Preview } from './preview'
-import { AbsolutePattern, AbsolutePoint, NumberPair, RelativePattern, State } from './types'
+import { AbsolutePattern, AbsolutePoint, NumberPair, PatternId, RelativePattern, State } from './types'
 
 const getDraftState = (state: State, draftClick: DraftClick, mousePosition: AbsolutePoint): State => {
   const draftPattern = {
@@ -34,7 +34,7 @@ const getDraftState = (state: State, draftClick: DraftClick, mousePosition: Abso
     newDraft = getRelativePatternPosition(newDraft, state.patterns[k]!.pattern)
   }
 
-  return { ...state, patterns: state.patterns.concat({ id: randomId(), pattern: newDraft }) }
+  return { ...state, patterns: state.patterns.concat({ id: randomId() as PatternId, pattern: newDraft }) }
 }
 
 type DraftClick = {
@@ -172,7 +172,21 @@ function App() {
             <PreviewButton onClick={() => setPreviewOpen(false)}>x</PreviewButton>
             <h2 className='text-amber-300'>preview (wip)</h2>
           </div>
-          <Preview state={state} />
+          <Preview
+            state={state}
+            updatePattern={(id, pattern) => {
+              const prev = state.patterns.find(p => p.id === id)
+
+              if (!prev) {
+                throw new Error(`Pattern with id ${id} not found`)
+              }
+
+              setState(prevState => ({
+                ...prevState,
+                patterns: prevState.patterns.map(p => (p.id === id ? { ...p, pattern } : p)),
+              }))
+            }}
+          />
         </div>
       ) : (
         <div className=' border-r-amber-300 border-r-1'>
