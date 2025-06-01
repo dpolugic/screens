@@ -1,6 +1,6 @@
 import React from 'react'
 import { getBoundariesFromPattern } from './functions'
-import { State } from './types'
+import { NumberPair, State } from './types'
 
 function getViewBox(state: State): string {
   let xMin = 0
@@ -27,6 +27,34 @@ function getViewBox(state: State): string {
   return `${xMin} ${yMin} ${xMax - xMin} ${yMax - yMin}`
 }
 
+function lerp(a: number, b: number, k: number): number {
+  return a + (b - a) * k
+}
+
+const PartialLine: React.FC<{ anchor: NumberPair; target: NumberPair }> = ({ anchor, target }) => {
+  const [anchorX, anchorY] = anchor
+  const [targetX, targetY] = target
+
+  const k = 0.2
+
+  const x1 = anchorX
+  const y1 = anchorY
+  const x2 = lerp(anchorX, targetX, k)
+  const y2 = lerp(anchorY, targetY, k)
+
+  return (
+    <line
+      className='stroke-amber-100'
+      vectorEffect='non-scaling-stroke'
+      strokeWidth='1px'
+      x1={x1.toFixed(3)}
+      y1={y1.toFixed(3)}
+      x2={x2.toFixed(3)}
+      y2={y2.toFixed(3)}
+    />
+  )
+}
+
 export const Preview: React.FC<{ state: State }> = ({ state }) => {
   return (
     <div className='border-b-1 border-amber-300 aspect-square'>
@@ -41,6 +69,8 @@ export const Preview: React.FC<{ state: State }> = ({ state }) => {
           width={1}
           height={1}
         />
+        <PartialLine anchor={[0, 0]} target={[1, 1]} />
+
         {state.patterns.map((p, i) => {
           const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(p)
 
@@ -60,27 +90,8 @@ export const Preview: React.FC<{ state: State }> = ({ state }) => {
                 height={height.toFixed(3)}
               />
               {/* Partial line from anchor to target in order to show the direction */}
-              {(() => {
-                const [anchorX, anchorY] = p.anchor
-                const [targetX, targetY] = p.target
+              <PartialLine anchor={p.anchor} target={p.target} />
 
-                const x1 = anchorX
-                const y1 = anchorY
-                const x2 = targetX - (targetX - anchorX) * 0.5
-                const y2 = targetY - (targetY - anchorY) * 0.5
-
-                return (
-                  <line
-                    className='stroke-amber-100'
-                    vectorEffect='non-scaling-stroke'
-                    strokeWidth='1px'
-                    x1={x1.toFixed(3)}
-                    y1={y1.toFixed(3)}
-                    x2={x2.toFixed(3)}
-                    y2={y2.toFixed(3)}
-                  />
-                )
-              })()}
               {/* Click surfaces for rotation and resizing actions */}
               {[
                 // top left
