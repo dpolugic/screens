@@ -103,10 +103,12 @@ function App() {
 
     handleResize()
 
-    window.addEventListener('resize', handleResize)
+    const observer = new ResizeObserver(handleResize)
+
+    observer.observe(canvasEl)
 
     return () => {
-      window.removeEventListener('resize', handleResize)
+      observer.disconnect()
     }
   }, [canvasEl])
 
