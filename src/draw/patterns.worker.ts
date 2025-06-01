@@ -77,7 +77,7 @@ self.onmessage = event => {
 function generatePatterns() {
   for (const { depth, patterns } of streamBatchedDrawablePatterns({
     state: {
-      patterns: [{ anchor: [0, 0], target: [0.5, 0.5] } as RelativePattern],
+      patterns: [{ id: 'debug', pattern: { anchor: [0, 0], target: [0.5, 0.5] } as RelativePattern }],
       screens: [{ anchor: [0.2, 0.2], target: [0.8, 0.8] } as AbsolutePattern],
     },
     chunkSize: 5,

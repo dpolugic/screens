@@ -9,8 +9,8 @@ function getViewBox(state: State): string {
   let yMax = 1
 
   // Make sure that default viewBox contains entire pattern
-  for (const p of state.patterns) {
-    const b = getBoundariesFromPattern(p)
+  for (const { pattern } of state.patterns) {
+    const b = getBoundariesFromPattern(pattern)
 
     xMin = Math.min(xMin, b.xMin)
     xMax = Math.max(xMax, b.xMax)
@@ -71,8 +71,8 @@ export const Preview: React.FC<{ state: State }> = ({ state }) => {
         />
         <PartialLine anchor={[0, 0]} target={[1, 1]} />
 
-        {state.patterns.map((p, i) => {
-          const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(p)
+        {state.patterns.map(({ pattern }, i) => {
+          const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
 
           const width = xMax - xMin
           const height = yMax - yMin
@@ -90,7 +90,7 @@ export const Preview: React.FC<{ state: State }> = ({ state }) => {
                 height={height.toFixed(3)}
               />
               {/* Partial line from anchor to target in order to show the direction */}
-              <PartialLine anchor={p.anchor} target={p.target} />
+              <PartialLine anchor={pattern.anchor} target={pattern.target} />
 
               {/* Click surfaces for rotation and resizing actions */}
               {[

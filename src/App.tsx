@@ -6,6 +6,7 @@ import {
   findClickedScreenOrPattern,
   getMousePoint,
   getRelativePatternPosition,
+  randomId,
 } from './functions'
 import { useStableFunction } from './hooks'
 import { Preview } from './preview'
@@ -30,10 +31,10 @@ const getDraftState = (state: State, draftClick: DraftClick, mousePosition: Abso
 
   let newDraft = getRelativePatternPosition(draftPatternRelative, state.screens[screenIndex]!)
   for (const k of nestedPath) {
-    newDraft = getRelativePatternPosition(newDraft, state.patterns[k]!)
+    newDraft = getRelativePatternPosition(newDraft, state.patterns[k]!.pattern)
   }
 
-  return { ...state, patterns: state.patterns.concat(newDraft) }
+  return { ...state, patterns: state.patterns.concat({ id: randomId(), pattern: newDraft }) }
 }
 
 type DraftClick = {
@@ -186,19 +187,6 @@ function App() {
             if (!ctx) return
 
             const mousePoint = getMousePoint(ctx, e)
-
-            console.log(
-              'pointerdown',
-              e.clientX,
-              e.width,
-              e.pageX,
-              e.screenX,
-              e.movementX,
-              ctx.canvas.width,
-              ctx.canvas.clientWidth,
-              e,
-              getMousePoint(ctx, e)
-            )
 
             // create draft screen based on current cursor position
             setDraftClick({

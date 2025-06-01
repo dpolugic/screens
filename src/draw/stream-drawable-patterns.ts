@@ -97,7 +97,7 @@ export function* streamDrawablePatterns({
       break
     }
 
-    for (const pattern of state.patterns) {
+    for (const { pattern } of state.patterns) {
       // Get new pattern
       const newViewportPattern = combinePatterns(entry.currentPattern, pattern)
 

@@ -247,7 +247,11 @@ export const findClickedScreenOrPattern = (
   let best: ClickedPath | undefined = undefined
   for (let i = 0; i < screens.length; i++) {
     const screen = screens[i]!
-    const clickedPath = findClickedPattern(screen, patterns, point)
+    const clickedPath = findClickedPattern(
+      screen,
+      patterns.map(p => p.pattern),
+      point
+    )
 
     if (clickedPath !== undefined) {
       if (best === undefined || clickedPath.length > best.nestedPath.length) {
@@ -268,4 +272,9 @@ export const findClickedScreenOrPattern = (
   }
 
   return best
+}
+
+export function randomId(): string {
+  // todo: use uuid or something
+  return Math.random().toString(36).substring(2, 15)
 }

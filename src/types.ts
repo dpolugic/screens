@@ -84,5 +84,8 @@ export type State = {
   screens: AbsolutePattern[]
 
   /** These are nested patterns. They are applied recursively to root-level patterns.*/
-  patterns: RelativePattern[]
+  patterns: {
+    id: string
+    pattern: RelativePattern
+  }[]
 }
