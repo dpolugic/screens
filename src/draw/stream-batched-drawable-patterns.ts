@@ -36,10 +36,10 @@ export function* streamBatchedDrawablePatterns({
 
       chunk = {
         depth: entry.depth,
-        patterns: [entry.currentPattern],
+        patterns: [entry.pattern],
       }
     } else {
-      chunk.patterns.push(entry.currentPattern)
+      chunk.patterns.push(entry.pattern)
 
       if (chunk.patterns.length >= chunkSize) {
         yield chunk

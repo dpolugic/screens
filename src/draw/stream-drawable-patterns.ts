@@ -1,6 +1,20 @@
-import { combinePatterns, mapPatternToViewportSpace, mutateBoundariesFromPattern } from '../functions'
+import {
+  applyMatrixAndOffsetToRectangle,
+  combineTransformations,
+  getMatrixAndOffsetFromRectangle,
+  mapPatternToViewportSpace,
+  mutateBoundariesFromPattern,
+} from '../functions'
 import { Queue } from '../queue'
-import { Boundaries, Size, State, ViewportNumber, ViewportPattern } from '../types'
+import {
+  AbsolutePoint,
+  Boundaries,
+  Size,
+  State,
+  Transformation,
+  ViewportNumber,
+  ViewportPattern,
+} from '../types'
 import { MAX_DEPTH, MAX_QUEUE_SIZE, MIN_PATTERN_SIZE_PX } from './constants'
 
 // We'll ignore everything that's a bit outside the viewport.
@@ -16,7 +30,12 @@ function getViewportBoundaries(screenSize: Size): Boundaries<ViewportNumber> {
 }
 
 type QueueEntry = {
-  currentPattern: ViewportPattern
+  currentTransformation: Transformation
+  depth: number
+}
+
+type DrawablePattern = {
+  pattern: ViewportPattern
   depth: number
 }
 
@@ -65,7 +84,7 @@ export function* streamDrawablePatterns({
 }: {
   state: State
   screenSize: Size
-}): Generator<QueueEntry, void, void> {
+}): Generator<DrawablePattern, void, void> {
   console.log(
     `generateDrawQueue start. Initial screens: ${state.screens.length}, Patterns: ${state.patterns.length}`
   )
@@ -76,9 +95,14 @@ export function* streamDrawablePatterns({
 
   for (const screen of state.screens) {
     patternQueue.push({
-      currentPattern: mapPatternToViewportSpace(screen, screenSize),
+      currentTransformation: getMatrixAndOffsetFromRectangle(screen),
       depth: 0,
     })
+
+    yield {
+      pattern: mapPatternToViewportSpace(screen, screenSize),
+      depth: 0,
+    }
   }
 
   let iterations = 0
@@ -86,8 +110,6 @@ export function* streamDrawablePatterns({
     iterations += 1
 
     const entry = patternQueue.shift()
-
-    yield entry
 
     // Don't add patterns that are too deep.
     if (entry.depth >= MAX_DEPTH) {
@@ -97,13 +119,34 @@ export function* streamDrawablePatterns({
       break
     }
 
-    for (const { pattern } of state.patterns) {
+    for (const { matrix, offset } of state.patterns) {
       // Get new pattern
-      const newViewportPattern = combinePatterns(entry.currentPattern, pattern)
+      const newTransformation = combineTransformations(
+        entry.currentTransformation.matrix,
+        entry.currentTransformation.offset,
+        matrix,
+        offset
+      )
 
-      if (isValidPattern(newViewportPattern, viewportBoundaries)) {
+      const transformedUnit = applyMatrixAndOffsetToRectangle(
+        newTransformation.matrix,
+        newTransformation.offset,
+        {
+          anchor: [0, 0] as AbsolutePoint,
+          target: [1, 1] as AbsolutePoint,
+        }
+      )
+
+      const newScreen = mapPatternToViewportSpace(transformedUnit, screenSize)
+
+      if (isValidPattern(newScreen, viewportBoundaries)) {
+        yield {
+          pattern: newScreen,
+          depth: entry.depth + 1,
+        }
+
         patternQueue.push({
-          currentPattern: newViewportPattern,
+          currentTransformation: newTransformation,
           depth: entry.depth + 1,
         })
 

@@ -2,15 +2,26 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 
 import { drawFrameIncrementally, drawFramePreview } from './draw/draw-frame'
 import {
+  applyMatrixAndOffsetToRectangle,
   ClickedPath,
+  combineTransformations,
   findClickedScreenOrPattern,
+  getMatrixAndOffsetFromRectangle,
   getMousePoint,
   getRelativePatternPosition,
   randomId,
 } from './functions'
 import { useStableFunction } from './hooks'
 import { Preview } from './preview'
-import { AbsolutePattern, AbsolutePoint, NumberPair, PatternId, RelativePattern, State } from './types'
+import {
+  AbsolutePattern,
+  AbsolutePoint,
+  NumberPair,
+  PatternId,
+  RelativePattern,
+  State,
+  Transformation,
+} from './types'
 
 const getDraftState = (state: State, draftClick: DraftClick, mousePosition: AbsolutePoint): State => {
   const draftPattern = {
@@ -29,12 +40,35 @@ const getDraftState = (state: State, draftClick: DraftClick, mousePosition: Abso
   // Re-interpret as relative pattern.
   const draftPatternRelative = draftPattern satisfies AbsolutePattern as unknown as RelativePattern
 
-  let newDraft = getRelativePatternPosition(draftPatternRelative, state.screens[screenIndex]!)
+  let transform: Transformation = getMatrixAndOffsetFromRectangle(state.screens[screenIndex]!)
+
   for (const k of nestedPath) {
-    newDraft = getRelativePatternPosition(newDraft, state.patterns[k]!.pattern)
+    transform = combineTransformations(
+      transform.matrix,
+      transform.offset,
+      state.patterns[k]!.matrix,
+      state.patterns[k]!.offset
+    )
   }
 
-  return { ...state, patterns: state.patterns.concat({ id: randomId() as PatternId, pattern: newDraft }) }
+  const newDraft = getMatrixAndOffsetFromRectangle(
+    getRelativePatternPosition(
+      draftPatternRelative,
+      applyMatrixAndOffsetToRectangle(transform.matrix, transform.offset, {
+        anchor: [0, 0],
+        target: [1, 1],
+      } as AbsolutePattern)
+    )
+  )
+
+  return {
+    ...state,
+    patterns: state.patterns.concat({
+      id: randomId() as PatternId,
+      matrix: newDraft.matrix,
+      offset: newDraft.offset,
+    }),
+  }
 }
 
 type DraftClick = {
@@ -181,9 +215,13 @@ function App() {
                 throw new Error(`Pattern with id ${id} not found`)
               }
 
+              const { matrix, offset } = getMatrixAndOffsetFromRectangle(pattern)
+
               setState(prevState => ({
                 ...prevState,
-                patterns: prevState.patterns.map(p => (p.id === id ? { ...p, pattern } : p)),
+                patterns: prevState.patterns.map((p): State['patterns'][number] =>
+                  p.id === id ? { ...p, matrix, offset } : p
+                ),
               }))
             }}
           />

@@ -10,6 +10,8 @@ import {
   RelativePoint,
   Size,
   State,
+  Transformation,
+  TransformationMatrix,
   ViewportNumber,
   ViewportPattern,
   ViewportPoint,
@@ -204,8 +206,8 @@ export type ClickedPath = {
 const MAX_DEPTH = 4
 
 const findClickedPattern = (
-  previousBasePattern: AbsolutePattern,
-  patterns: RelativePattern[],
+  previousBaseTransformation: Transformation,
+  transformations: Transformation[],
   point: AbsolutePoint,
   path: number[] = []
 ): NestedPath | undefined => {
@@ -213,17 +215,31 @@ const findClickedPattern = (
 
   let best: NestedPath | undefined = undefined
 
-  for (let i = 0; i < patterns.length; i++) {
-    const newBasePattern = combinePatterns(previousBasePattern, patterns[i]!)
+  for (let i = 0; i < transformations.length; i++) {
+    const newBaseTransformation = combineTransformations(
+      previousBaseTransformation.matrix,
+      previousBaseTransformation.offset,
+      transformations[i]!.matrix,
+      transformations[i]!.offset
+    )
     const newPath = path.concat(i)
 
-    const nestedResult = findClickedPattern(newBasePattern, patterns, point, newPath)
+    const nestedResult = findClickedPattern(newBaseTransformation, transformations, point, newPath)
 
     if (nestedResult !== undefined) {
       if (best === undefined || nestedResult.length > best.length) {
         best = nestedResult
       }
-    } else if (best === undefined && pointIsInPattern(point, newBasePattern)) {
+    } else if (
+      best === undefined &&
+      pointIsInPattern(
+        point,
+        applyMatrixAndOffsetToRectangle(newBaseTransformation.matrix, newBaseTransformation.offset, {
+          anchor: [0, 0],
+          target: [1, 1],
+        } as AbsolutePattern)
+      )
+    ) {
       // only check current depth if there's no nested result
       best = newPath
     }
@@ -247,11 +263,8 @@ export const findClickedScreenOrPattern = (
   let best: ClickedPath | undefined = undefined
   for (let i = 0; i < screens.length; i++) {
     const screen = screens[i]!
-    const clickedPath = findClickedPattern(
-      screen,
-      patterns.map(p => p.pattern),
-      point
-    )
+
+    const clickedPath = findClickedPattern(getMatrixAndOffsetFromRectangle(screen), patterns, point)
 
     if (clickedPath !== undefined) {
       if (best === undefined || clickedPath.length > best.nestedPath.length) {
@@ -277,4 +290,160 @@ export const findClickedScreenOrPattern = (
 export function randomId(): string {
   // todo: use uuid or something
   return Math.random().toString(36).substring(2, 15)
+}
+
+export function getMatrixAndOffsetFromRectangle<N extends PatternNumber>(
+  rectangle: Pattern<N>
+): {
+  matrix: [a: number, b: number, c: number, d: number]
+  offset: [x: number, y: number]
+} {
+  const { anchor, target } = rectangle
+
+  const [x1, y1] = anchor
+  const [x2, y2] = target
+
+  // The transformation is: newX = x1 + relativeX * (x2 - x1), newY = y1 + relativeY * (y2 - y1)
+  // This can be written as a matrix transformation:
+  // [newX] = [(x2-x1)    0    ] [relativeX] + [x1]
+  // [newY]   [0       (y2-y1)] [relativeY]   [y1]
+
+  const scaleX = x2 - x1
+  const scaleY = y2 - y1
+  const offsetX = x1
+  const offsetY = y1
+
+  const matrix = [scaleX, 0, 0, scaleY] satisfies [a: number, b: number, c: number, d: number]
+  const offset = [offsetX, offsetY] satisfies [x: number, y: number]
+
+  return { matrix, offset }
+}
+
+// ts-unused-exports:disable-next-line
+export function matmul(a: TransformationMatrix, b: TransformationMatrix): TransformationMatrix {
+  const [a1, b1, c1, d1] = a
+  const [a2, b2, c2, d2] = b
+
+  return [a1 * a2 + c1 * b2, b1 * a2 + d1 * b2, a1 * c2 + c1 * d2, b1 * c2 + d1 * d2]
+}
+
+function vecMatMul(
+  [a, b]: [x: number, y: number],
+  [a1, b1, c1, d1]: TransformationMatrix
+): [x: number, y: number] {
+  return [a1 * a + c1 * b, b1 * a + d1 * b]
+}
+
+// ts-unused-exports:disable-next-line
+export function vecScale(a: [x: number, y: number], s: number): [x: number, y: number] {
+  return [a[0] * s, a[1] * s]
+}
+
+// ts-unused-exports:disable-next-line
+export function vecMul(a: [x: number, y: number], b: [x: number, y: number]): [x: number, y: number] {
+  return [a[0] * b[0], a[1] * b[1]]
+}
+
+// ts-unused-exports:disable-next-line
+function vecAdd(a: [x: number, y: number], b: [x: number, y: number]): [x: number, y: number] {
+  return [a[0] + b[0], a[1] + b[1]]
+}
+
+// ts-unused-exports:disable-next-line
+export function vecSub(a: [x: number, y: number], b: [x: number, y: number]): [x: number, y: number] {
+  return [a[0] - b[0], a[1] - b[1]]
+}
+
+export function applyMatrixAndOffsetToRectangle<ParentNumber extends PatternNumber>(
+  matrix: [a: number, b: number, c: number, d: number],
+  offset: [x: number, y: number],
+  rectangle: Pattern<ParentNumber>
+): Pattern<ParentNumber> {
+  const { anchor, target } = rectangle
+
+  // Apply the affine transformation to both corner points
+  // For each point: newPoint = matrix * point + offset
+  const newAnchor = vecAdd(vecMatMul(anchor, matrix), offset) as Point<ParentNumber>
+  const newTarget = vecAdd(vecMatMul(target, matrix), offset) as Point<ParentNumber>
+
+  return {
+    anchor: newAnchor,
+    target: newTarget,
+  }
+}
+
+// export function combineTransformations(
+//   matrix1: [a: number, b: number, c: number, d: number],
+//   offset1: [x: number, y: number],
+//   matrix2: [a: number, b: number, c: number, d: number],
+//   offset2: [x: number, y: number]
+// ): { matrix: [a: number, b: number, c: number, d: number]; offset: [x: number, y: number] } {
+//   const [x1, y1] = offset1
+//   const [x2, y2] = offset2
+
+//   const matrix = matmul(matrix1, matrix2)
+//   const offset = [x1 + x2, y1 + y2] satisfies [x: number, y: number]
+
+//   return {
+//     matrix,
+//     offset,
+//   }
+// }
+
+// Represent affine transformation as 3x3 homogeneous matrix
+type HomogeneousMatrix = [
+  a: number,
+  c: number,
+  tx: number,
+  b: number,
+  d: number,
+  ty: number,
+  // [0, 0, 1] is implicit
+]
+
+function toHomogeneous(
+  matrix: [a: number, b: number, c: number, d: number],
+  offset: [x: number, y: number]
+): HomogeneousMatrix {
+  const [a, b, c, d] = matrix
+  const [tx, ty] = offset
+  return [a, c, tx, b, d, ty]
+}
+
+function fromHomogeneous(homogeneous: HomogeneousMatrix): {
+  matrix: [a: number, b: number, c: number, d: number]
+  offset: [x: number, y: number]
+} {
+  const [a, c, tx, b, d, ty] = homogeneous
+  return {
+    matrix: [a, b, c, d],
+    offset: [tx, ty],
+  }
+}
+
+function multiplyHomogeneous(h1: HomogeneousMatrix, h2: HomogeneousMatrix): HomogeneousMatrix {
+  const [a1, c1, tx1, b1, d1, ty1] = h1
+  const [a2, c2, tx2, b2, d2, ty2] = h2
+
+  // Matrix multiplication for 3x3 homogeneous matrices
+  return [
+    a1 * a2 + c1 * b2, // new a
+    a1 * c2 + c1 * d2, // new c
+    a1 * tx2 + c1 * ty2 + tx1, // new tx (offset gets transformed!)
+    b1 * a2 + d1 * b2, // new b
+    b1 * c2 + d1 * d2, // new d
+    b1 * tx2 + d1 * ty2 + ty1, // new ty (offset gets transformed!)
+  ]
+}
+
+export function combineTransformations(
+  matrix1: [a: number, b: number, c: number, d: number],
+  offset1: [x: number, y: number],
+  matrix2: [a: number, b: number, c: number, d: number],
+  offset2: [x: number, y: number]
+): { matrix: [a: number, b: number, c: number, d: number]; offset: [x: number, y: number] } {
+  const h1 = toHomogeneous(matrix1, offset1)
+  const h2 = toHomogeneous(matrix2, offset2)
+  const combined = multiplyHomogeneous(h1, h2)
+  return fromHomogeneous(combined)
 }

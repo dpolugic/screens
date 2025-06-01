@@ -80,14 +80,30 @@ export type Boundaries<N extends PatternNumber> = {
 
 export type PatternId = Brand<string, 'PatternId'>
 
+export type TransformationMatrix = [a: number, b: number, c: number, d: number]
+
+// ts-unused-exports:disable-next-line
+export type TransformationOffset = [x: number, y: number]
+
+export type Transformation = {
+  matrix: TransformationMatrix
+  offset: TransformationOffset
+}
+
 /** This defines what is drawn on the screen. */
 export type State = {
   /** These are root-level patterns. */
   screens: AbsolutePattern[]
 
-  /** These are nested patterns. They are applied recursively to root-level patterns.*/
+  /** These are nested patterns. They are applied recursively to root-level patterns. */
   patterns: {
+    /** The id of the pattern. Relevant for editing. */
     id: PatternId
-    pattern: RelativePattern
+
+    /** A 2x2 matrix that defines how to scale and rotate the pattern. */
+    matrix: TransformationMatrix
+
+    /** An offset that is applied to the pattern. */
+    offset: TransformationOffset
   }[]
 }

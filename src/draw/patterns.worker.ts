@@ -1,4 +1,4 @@
-import { AbsolutePattern, PatternId, RelativePattern, State, ViewportPattern } from '../types'
+import { AbsolutePattern, PatternId, State, ViewportPattern } from '../types'
 import { streamBatchedDrawablePatterns } from './stream-batched-drawable-patterns'
 
 type WorkerState =
@@ -77,9 +77,7 @@ self.onmessage = event => {
 function generatePatterns() {
   for (const { depth, patterns } of streamBatchedDrawablePatterns({
     state: {
-      patterns: [
-        { id: 'debug' as PatternId, pattern: { anchor: [0, 0], target: [0.5, 0.5] } as RelativePattern },
-      ],
+      patterns: [{ id: 'debug' as PatternId, matrix: [0.8, 0, 0, 0.8], offset: [0.1, 0.1] }],
       screens: [{ anchor: [0.2, 0.2], target: [0.8, 0.8] } as AbsolutePattern],
     },
     chunkSize: 5,

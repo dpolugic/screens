@@ -1,5 +1,9 @@
 import React, { useMemo, useState } from 'react'
-import { getBoundariesFromPattern } from './functions'
+import {
+  applyMatrixAndOffsetToRectangle,
+  getBoundariesFromPattern,
+  getMatrixAndOffsetFromRectangle,
+} from './functions'
 import { NumberPair, PatternId, RelativePattern, RelativePoint, State } from './types'
 
 function getViewBox(state: State): { x: number; y: number; width: number; height: number } {
@@ -9,7 +13,12 @@ function getViewBox(state: State): { x: number; y: number; width: number; height
   let yMax = 1
 
   // Make sure that default viewBox contains entire pattern
-  for (const { pattern } of state.patterns) {
+  for (const { matrix, offset } of state.patterns) {
+    const pattern = applyMatrixAndOffsetToRectangle(matrix, offset, {
+      anchor: [0, 0] as RelativePoint,
+      target: [1, 1] as RelativePoint,
+    })
+
     const b = getBoundariesFromPattern(pattern)
 
     xMin = Math.min(xMin, b.xMin)
@@ -82,7 +91,7 @@ export const Preview: React.FC<{
     | undefined
   >(undefined)
 
-  const state = useMemo(() => {
+  const state = useMemo((): State => {
     if (resizeState === undefined) {
       return _state
     }
@@ -95,9 +104,13 @@ export const Preview: React.FC<{
       throw new Error(`Pattern with id ${id} not found`)
     }
 
+    const { matrix, offset } = getMatrixAndOffsetFromRectangle(pattern)
+
     return {
       ..._state,
-      patterns: _state.patterns.map(p => (p.id === id ? { ...p, pattern } : p)),
+      patterns: _state.patterns.map((p): State['patterns'][number] =>
+        p.id === id ? { ...p, matrix, offset } : p
+      ),
     }
   }, [_state, resizeState])
 
@@ -231,7 +244,12 @@ export const Preview: React.FC<{
         />
         <PartialLine anchor={[0, 0]} target={[1, 1]} />
 
-        {state.patterns.map(({ id, pattern }) => {
+        {state.patterns.map(({ id, matrix, offset }) => {
+          const pattern = applyMatrixAndOffsetToRectangle(matrix, offset, {
+            anchor: [0, 0] as RelativePoint,
+            target: [1, 1] as RelativePoint,
+          })
+
           const { xMin, xMax, yMin, yMax } = getBoundariesFromPattern(pattern)
 
           const width = xMax - xMin
